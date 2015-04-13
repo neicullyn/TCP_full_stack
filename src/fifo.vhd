@@ -4,7 +4,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity fifo is
+entity FIFO is
 	generic(
 			-- width of data
 			width : integer := 8;
@@ -40,9 +40,9 @@ entity fifo is
 			FULL : out std_logic
 			
 			);
-end fifo;
+end FIFO;
 
-architecture Behavioral of fifo is
+architecture Behavioral of FIFO is
 
 begin
 

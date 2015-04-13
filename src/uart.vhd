@@ -11,7 +11,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
 
-entity uart is
+entity UART is
 	generic( 
 			-- Prescaler
 			-- UART frequency is system frequency / n_prescaler
@@ -37,9 +37,9 @@ entity uart is
 			TX_rdy : in  std_logic
 			
 			);			
-end uart;
+end UART;
 
-architecture Behavioral of uart is
+architecture Behavioral of UART is
 
 begin
 
