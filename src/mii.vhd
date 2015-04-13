@@ -31,56 +31,49 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity MII is
 	port(
-		-- Internal_RX
-		
-		-- Data to receive
-		RX_bus : out std_logic_vector(7 downto 0);
-		
-		-- Data is ready to read
-		RX_bus_valid : out std_logic;
-		
-		-- Internal_TX
-		
-		-- Data to transmit
-		TX_bus : in std_logic_vector(7 downto 0);
-		
-		-- Data is ready to rad
-		TX_bus_valid  : in std_logic;
-		
-		-- Data has been latched, the bus data can be updated now
-		TX_bus_latched : out std_logic;
-		
+		-- Clock and reset
+			CLK : in std_logic;
+			nRST : in std_logic;		
 	
-		-- MII_RX
+		-- MAC_core_RX		
+			-- Data to MAC_core
+			RXD_MAC_core : out std_logic_vector(7 downto 0);			
+			-- Data to MAC_core is ready to read
+			RXDV_MAC_core : out std_logic;		
 		
-		-- Data to receive
-		RXD : in std_logic_vector(3 downto 0);
+		-- MAC_core_TX		
+			-- Data from MAC_core
+			TXD_MAC_core : in std_logic_vector(7 downto 0);			
+			-- Data is ready to read
+			TXDV_MAC_core  : in std_logic;			
+			-- Data has been latched, the data can be updated now
+			TXDU_MAC_core : out std_logic;			
+	
+		-- MII_RX		
+			-- Data to receive
+			RXD : in std_logic_vector(3 downto 0);			
+			-- receive error
+			RXER : in std_logic;			
+			-- receive ready
+			RXDV : in std_logic;			
+			-- receive clock
+			RXCLK : in std_logic;		
 		
-		-- receive error
-		RXER : in std_logic;
-		
-		-- receive ready
-		RXDV : in std_logic;
-		
-		-- receive clock
-		RXCLK : in std_logic;
-		
-		-- MII_TX
-		
-		-- Data to transmit
-		TXD : out std_logic_vector(3 downto 0);
-		
-		-- transmit error
-		TXER : out std_logic;
-		
-		-- transmit enable
-		TXEN : out std_logic;
-		
-		-- transmit clock
-		TXCLK : in std_logic
-		
+		-- MII_TX		
+			-- Data to transmit
+			TXD : out std_logic_vector(3 downto 0);			
+			-- transmit error
+			TXER : out std_logic;			
+			-- transmit enable
+			TXEN : out std_logic;			
+			-- transmit clock
+			TXCLK : in std_logic;			
+			
+		-- collision indication
+			COL : in std_logic;			
+		-- carrier sense
+			CRS : in std_logic		
 		);
-
 end MII;
 
 architecture Behavioral of MII is
