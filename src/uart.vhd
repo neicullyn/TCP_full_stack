@@ -39,7 +39,10 @@ entity UART is
 			RXDV : out std_logic;
 			
 			-- tx_data in FIFO is ready to be loaded
-			TXDV : in  std_logic
+			TXDV : in  std_logic;
+			
+			-- ready to transmit new data
+			TXRDY : out  std_logic
 			
 			);			
 end UART;
@@ -52,6 +55,9 @@ architecture Behavioral of UART is
 	signal main_counter : unsigned ((counter_width-1) downto 0);
 	-- The auxiliary counter, which overflow at a frequency of f_uart
 	signal aux_counter : unsigned(2 downto 0);
+	
+		-- The aux_counter is controlled by the enable signal
+	signal aux_counter_enable : std_logic;
 	
 	-- Indicates that main_counter is going to overflow
 	signal main_counter_overflow : std_logic;
@@ -80,11 +86,13 @@ architecture Behavioral of UART is
 	-- These are the signals for data receiving
 	signal RX_buf : std_logic_vector(7 downto 0);
 	signal RX_counter : unsigned(2 downto 0);
+	
+	type RX_STATES is (IDLE, PHASE_ADJUST1, PHASE_ADJUST2, RUN, STOP);
+	signal RX_state : RX_STATES;
 	------------------------------------------------------------------
 	
 	
-	type STATES is (IDLE, RUN);
-	signal state : STATES;
+
 
 begin
 	-- This is the process to generate the clock_valid signal
@@ -124,16 +132,21 @@ begin
 				main_counter <= to_unsigned(0, main_counter'length);
 			end if;
 			
-			if (main_counter_overflow = '1') then
-				-- Only when main_counter is going to overflow should aux_counter change
-				if (aux_counter_overflow = '0') then
-					-- If the counter is not going to overflow, increase the value
-					aux_counter <= aux_counter + 1;
-				else
-					-- If the counter is going to overflow, the next value is 0
-					aux_counter <= to_unsigned(0, aux_counter'length);
-				end if;
-			end if;			
+			if (aux_counter_enable = '1') then
+				if (main_counter_overflow = '1') then
+					-- Only when main_counter is going to overflow should aux_counter change
+					if (aux_counter_overflow = '0') then
+						-- If the counter is not going to overflow, increase the value
+						aux_counter <= aux_counter + 1;
+					else
+						-- If the counter is going to overflow, the next value is 0
+						aux_counter <= to_unsigned(0, aux_counter'length);
+					end if;
+				end if;	
+			else
+				-- Set to 0 when not enabled
+				aux_counter <= to_unsigned(0, aux_counter'length);
+			end if;
 		end if;	
 	end process;
 	
@@ -149,7 +162,7 @@ begin
 		if (nRST = '0') then
 			-- Async reset
 			-- Note that the idle state of RX is '1'
-			RX_filter_buf <= "000000";
+			RX_filter_buf <= "111111";
 			-- and clock_valid_UARTx6 = '1'
 		elsif (rising_edge(CLK)) then
 			-- Update the filter buf at a frequency of 6 x f_uart
@@ -183,43 +196,59 @@ begin
 	end process;
 	
 
-	-- This is the process of receiving data
-	-- Note that the machine runs at a frequency of f_uart
+	-- This is the process for receiving data
 	RXD <= RX_buf;
+	aux_counter_enable <= '1' when (RX_state = RUN or RX_state = STOP) else '0';
+	
 	RX_Main: process(nRST, CLK)
 	begin
 		if(nRST = '0') then
 			-- Async reset
 			RXDV <= '0';
-			state <= IDLE;
+			RX_state <= IDLE;
 			RX_buf <= "00000000";
 			RX_counter <= to_unsigned(0, RX_counter'length);
 			
 		elsif(rising_edge(CLK)) then
-			if (clock_valid_UART = '1') then
-				-- Run at a frequency of f_uart
-				case state is
+			if (clock_valid_UARTx6 = '1') then
+				-- Run at a frequency of f_uart * 6
+				case RX_state is
 					when IDLE =>
 						if (RX_f = '0') then
 							-- New data is going to arrive
 							-- clear RXDV, go to RUN state
 							RXDV <= '0';
-							state <= RUN;
+							RX_state <= PHASE_ADJUST1;
 						end if;
 						
+					-- Wait for two UARTx6 cycle to adjust the phase
+					-- This makes the module more stable
+					when PHASE_ADJUST1 =>
+						RX_state <= PHASE_ADJUST2;
+						
+					when PHASE_ADJUST2 =>
+						RX_state <= RUN;
+						
 					when RUN =>
-						-- Shift register:
-						-- RX_f -> RX_buf(7) -> ... -> RX_buf(0)
-						RX_buf(6 downto 0) <= RX_buf(7 downto 1);
-						RX_buf(7) <= RX_f;
-						RX_counter <= RX_counter + 1;
-						
-						
-						if (RX_counter = "111") then
-							-- When RX_counter = "111", all data have been received
-							RXDV <= '1';
-							state <= IDLE;
-						end if;						
+						if (clock_valid_uart = '1') then
+							-- Shift register:
+							-- RX_f -> RX_buf(7) -> ... -> RX_buf(0)
+							RX_buf(6 downto 0) <= RX_buf(7 downto 1);
+							RX_buf(7) <= RX_f;
+							RX_counter <= RX_counter + 1;						
+							
+							if (RX_counter = "111") then
+								-- When RX_counter = "111", all data have been received
+								RXDV <= '1';
+								RX_state <= STOP;
+							end if;		
+						end if;
+					
+					when STOP =>
+						-- Wait for at least one stop bit, then go back to IDLE
+						if (clock_valid_uart = '1') then
+							RX_state <= idle;
+						end if;					
 				end case;
 				
 			end if;	
