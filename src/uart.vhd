@@ -291,6 +291,7 @@ begin
 			TX_serial <= '1';
 			TX_buf <= "00000000";
 			TX_counter <= to_unsigned(0, TX_counter'length);
+			TX_state <= IDLE;
 		elsif (rising_edge(CLK)) then
 			case TX_state is 
 				when IDLE =>
@@ -300,6 +301,7 @@ begin
 						TX_state <= START;
 					end if;
 				when START =>
+					TX_counter <= to_unsigned(0, TX_counter'length);
 					
 				when RUN =>
 				when STOP =>
