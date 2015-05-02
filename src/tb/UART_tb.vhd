@@ -48,7 +48,9 @@ ARCHITECTURE behavior OF UART_tb IS
          RXD : OUT  std_logic_vector(7 downto 0);
          TXD : IN  std_logic_vector(7 downto 0);
          RXDV : OUT  std_logic;
-         TXDV : IN  std_logic
+         TXDV : IN  std_logic;
+			wr : out std_logic;
+			rd : out  std_logic
         );
     END COMPONENT;
     
@@ -64,6 +66,8 @@ ARCHITECTURE behavior OF UART_tb IS
    signal TX_serial : std_logic;
    signal RXD : std_logic_vector(7 downto 0);
    signal RXDV : std_logic;
+	signal WR : std_logic;
+	signal RD : std_logic;
 
    -- Clock period definitions
    constant CLK_period : time := 10 ns;
@@ -79,7 +83,9 @@ BEGIN
           RXD => RXD,
           TXD => TXD,
           RXDV => RXDV,
-          TXDV => TXDV
+          TXDV => TXDV,
+			 WR => WR,
+			 RD => RD
         );
 
    -- Clock process definitions
@@ -91,9 +97,9 @@ BEGIN
 		wait for CLK_period/2;
    end process;
  
-
+	RX_serial <= TX_serial after 1 ns;
    -- Stimulus process
-   stim_proc: process
+   rx_proc: process
 		-- Note that LSB is transmitted first
 
 		type char_array is array(integer range <>) of std_logic_vector(7 downto 0);
@@ -105,36 +111,33 @@ BEGIN
 		constant uart_period :time := 8680.55 ns;
    begin		
       nRST <= '0';
-		RX_serial <= '1';
       wait for 100 ns;	
 		nRST <= '1';
 
-		wait for 10 ns;
-		
-		for i in 0 to (vector_to_rx'length - 1) loop
-			-- Start bit
-			RX_serial <= '0';
-			wait for uart_period;
-			
-			-- Content
-			for j in 0 to 7 loop
-				RX_serial <= vector_to_rx(i)(j);
-				wait for uart_period;
-			end loop;
-			
-			-- Stop bits
-			RX_serial <= '1';
-			wait for uart_period*2;
-			
-			-- Check correctness
-			assert (RXD = vector_to_rx(i)) report "Test Failure";
-			
-			-- Wait for sometime to simulate non-synchronized behavior
-			wait for uart_period * 0.73;
-			
-		end loop;
-
       wait;
    end process;
+	
+	tx_proc: process
+		type char_array is array(integer range <>) of std_logic_vector(7 downto 0);
+		
+		-- Input data
+		constant vector_to_tx : char_array(0 to 3) := (x"FF", x"00", x"55", x"AA");
+		
+		-- Period: 1s / 115200 ~ 8680.55 ns
+		constant uart_period :time := 8680.55 ns;
+	begin
+		TXDV <= '1';
+		TXD <= vector_to_tx(0);
+		wait until (rising_edge(CLK) and RD = '1');
+		TXD <= vector_to_tx(1);
+		wait until (rising_edge(CLK) and RD = '1');
+		TXD <= vector_to_tx(2);
+		wait until (rising_edge(CLK) and RD = '1');
+		TXD <= vector_to_tx(3);
+		wait until (rising_edge(CLK) and RD = '1');
+		TXDV <= '0';
+		
+		wait;
+	end process;
 
 END;

@@ -43,7 +43,8 @@ ARCHITECTURE behavior OF Counter_tb IS
     PORT(
          CLK : IN  std_logic;
          nRST : IN  std_logic;
-         EN : IN  std_logic;
+         EN1 : IN  std_logic;
+			EN2 : IN  std_logic;
          COUT : OUT  std_logic
         );
     END COMPONENT;
@@ -66,7 +67,8 @@ BEGIN
    uut: Counter PORT MAP (
           CLK => CLK,
           nRST => nRST,
-          EN => EN,
+          EN1 => EN,
+			 EN2 => EN,
           COUT => COUT
         );
 

@@ -35,7 +35,9 @@ entity Counter is
 			-- Asynchronous reset, active low
 			nRST : in std_logic;		
 			-- Enable counting and carry out
-			EN : in std_logic;
+			-- The module is enabled when EN1 = '1' and EN2 = '1'
+			EN1 : in std_logic;
+			EN2 : in std_logic;
 			-- Carry out, is high when val == max_val and EN = '1'
 			COUT : out std_logic
 			);	
@@ -44,8 +46,9 @@ end Counter;
 architecture Behavioral of Counter is
 
 	signal val : unsigned((width - 1) downto 0);
-
+	signal EN : std_logic;
 begin
+   EN <= EN1 and EN2;
 	process (nRST, CLK)
 	begin
 		if (nRST = '0') then

@@ -51,6 +51,19 @@ entity UART is
 end UART;
 
 architecture Behavioral of UART is
+	COMPONENT Counter
+		GENERIC(
+			width : integer := 3;
+			max_val : integer := 7
+			);
+		PORT(
+			CLK : IN std_logic;
+			nRST : IN std_logic;
+			EN1 : IN std_logic;          
+			EN2 : IN std_logic;    
+			COUT : OUT std_logic
+			);
+	END COMPONENT;
 
 	------------------------------------------------------------------
 	-- Dummy Signals
@@ -61,25 +74,25 @@ architecture Behavioral of UART is
 	------------------------------------------------------------------
 	-- These are the singals used to generate f_uart and 6 * f_uart
 	
-	-- The main counter, which overflow at a frequency of f_uart * 6
-	signal main_counter : unsigned ((counter_width-1) downto 0);
-	-- The auxiliary counter, which overflow at a frequency of f_uart
-	signal aux_counter : unsigned(2 downto 0);
-	
-		-- The aux_counter is controlled by the enable signal
-	signal aux_counter_enable : std_logic;
-	
-	-- Indicates that main_counter is going to overflow
+	-- main_counter: generate 6 * f_uart
 	signal main_counter_overflow : std_logic;
-	-- Indicates that aux_counter is going to overflow
-	signal aux_counter_overflow : std_logic;
+	
+	-- rx_aux_counter: generate f_uart for rx
+	signal rx_aux_counter_enable :std_logic;
+	signal rx_aux_counter_overflow : std_logic;
+	
+	-- tx_aux_counter: generate f_uart for tx
+	signal tx_aux_counter_enable :std_logic;
+	signal tx_aux_counter_overflow : std_logic;
 
 	-- These two signal is used to generate the actural 
 	-- clock signal for UART module.
-	-- They are the overflow signals of the counters
-	signal clock_valid_UART : std_logic;
+	-- They are actually the overflow signals of the counters
 	signal clock_valid_UARTx6 : std_logic;
-	signal clock_valid_UARTx6b : std_logic;
+	signal clock_valid_UART_rx : std_logic;
+	signal clock_valid_UART_tx : std_logic;
+	
+
 	------------------------------------------------------------------
 	
 	------------------------------------------------------------------
@@ -119,58 +132,56 @@ begin
 	-- Both clock_valid_UART and clock_valid_UARTx6 are pulses
 	-- enabling the corresponding parts of the circuit.
 
+
+
+	main_counter: Counter 
+		generic map(
+			width => counter_width,
+			max_val => n_prescale - 1
+			)
+		port map(
+			CLK => CLK,
+			nRST => nRST,
+			EN1 => '1',
+			EN2 => '1',
+			COUT => main_counter_overflow
+	);
+	
+	rx_aux_counter: Counter 
+		generic map(
+			width => 3,
+			max_val => 6- 1
+			)
+		port map(
+			CLK => CLK,
+			nRST => nRST,
+			EN1 => main_counter_overflow,
+			EN2 => rx_aux_counter_enable,
+			COUT => rx_aux_counter_overflow
+	);
+	
+	tx_aux_counter: Counter 
+		generic map(
+			width => 3,
+			max_val => 6- 1
+			)
+		port map(
+			CLK => CLK,
+			nRST => nRST,
+			EN1 => main_counter_overflow,
+			EN2 => tx_aux_counter_enable,
+			COUT => tx_aux_counter_overflow
+	);
+	
+	
 	-- If the clock frequency of UART is 115200:
 	-- the frequency of clock_valid_UART ~ 115200
-	-- the frequency of clock_Valid_UARTx6 ~ 115200 * 6
-	main_counter_overflow <= '1' when (main_counter = to_unsigned(n_prescale - 1, main_counter'length)) else
-									 '0';
-	aux_counter_overflow <= '1' when ( (aux_counter = to_unsigned(6 - 1, aux_counter'length))
-										        and (main_counter_overflow = '1')) else
-									 '0';
-	
+	-- the frequency of clock_Valid_UARTx6 ~ 115200 * 6	
 	-- The clock_valid signals for f_uart are the same as overflow signals
-	clock_valid_UART <= aux_counter_overflow;
+	clock_valid_UART_rx <= rx_aux_counter_overflow;
+	clock_valid_UART_tx <= tx_aux_counter_overflow;
 	clock_valid_UARTx6 <= main_counter_overflow;
 	
-	-- The phase of the control signal for the filter is different, to avoid side-effect
-	clock_valid_UARTx6b <= '1' when (main_counter = to_unsigned((n_prescale - 1) / 2, main_counter'length)) else
-									 '0';
-									 
-	clock_valid_generator: process (nRST, CLK)
-	begin
-		if (nRST = '0') then
-			-- Async reset
-			main_counter <= to_unsigned(0, main_counter'length);
-			aux_counter <= to_unsigned(0, aux_counter'length);
-		elsif (rising_edge(CLK)) then
-		
-			if (main_counter_overflow = '0') then	
-				-- If the counter is not going to overflow, increase the value
-				main_counter <= main_counter + 1;
-			else
-				-- If the counter is going to overflow, the next value is 0
-				main_counter <= to_unsigned(0, main_counter'length);
-			end if;
-			
-			if (aux_counter_enable = '1') then
-				if (main_counter_overflow = '1') then
-					-- Only when main_counter is going to overflow should aux_counter change
-					if (aux_counter_overflow = '0') then
-						-- If the counter is not going to overflow, increase the value
-						aux_counter <= aux_counter + 1;
-					else
-						-- If the counter is going to overflow, the next value is 0
-						aux_counter <= to_unsigned(0, aux_counter'length);
-					end if;
-				end if;	
-			else
-				-- Set to 0 when not enabled
-				aux_counter <= to_unsigned(0, aux_counter'length);
-			end if;
-		end if;	
-	end process;
-	
-
 	-- This is a simple filter to filter out the possible 
 	-- noise on RX_serial. RX_serial_f is the output signal,
 	-- which is '0' when 4 or more of RX_filter_buf is '0'
@@ -186,7 +197,7 @@ begin
 			-- and clock_valid_UARTx6 = '1'
 		elsif (rising_edge(CLK)) then
 			-- Update the filter buf at a frequency of 6 x f_uart
-			if (clock_valid_UARTx6b = '1') then
+			if (clock_valid_UARTx6 = '1') then
 				-- Rising edge of CLK
 				-- Update the buf
 				RX_filter_buf(1 to 5) <= RX_filter_buf(0 to 4);
@@ -218,7 +229,7 @@ begin
 
 	-- This is the process for receiving data
 	RXD <= RX_buf;
-	aux_counter_enable <= '1' when (RX_state = RUN or RX_state = STOP) else '0';
+	rx_aux_counter_enable <= '1' when (RX_state = RUN or RX_state = STOP) else '0';
 	
 	RX_Main: process(nRST, CLK)
 	begin
@@ -256,7 +267,7 @@ begin
 						RX_state <= RUN;
 						
 					when RUN =>
-						if (clock_valid_uart = '1') then
+						if (clock_valid_uart_rx = '1') then
 							-- Shift register:
 							-- RX_f -> RX_buf(7) -> ... -> RX_buf(0)
 							RX_buf(6 downto 0) <= RX_buf(7 downto 1);
@@ -272,7 +283,7 @@ begin
 					
 					when STOP =>
 						-- Wait for at least one stop bit, then go back to IDLE
-						if (clock_valid_uart = '1') then
+						if (clock_valid_uart_rx = '1') then
 							WR_dummy <= '1';
 							RX_state <= idle;
 						end if;					
@@ -282,31 +293,73 @@ begin
 		end if;
 	end process;
 	
+	
+	tx_aux_counter_enable <= '1' when (TX_state = START or TX_state = RUN or TX_state = STOP) else '0';
 	-- This is the process to receive data
 	TX_main : process(nRST, CLK)
 	begin
 		if(nRST = '0') then
 			-- Async Reset
-			-- The idle state of TX is 1
-			TX_serial <= '1';
+			RD_dummy <= '0';
 			TX_buf <= "00000000";
 			TX_counter <= to_unsigned(0, TX_counter'length);
 			TX_state <= IDLE;
 		elsif (rising_edge(CLK)) then
+			-- The width of RD is one clock cycle
+			if (RD_dummy = '1') then
+				RD_dummy <= '0';
+			end if;
+			
 			case TX_state is 
 				when IDLE =>
-					if(TXDV = '1') then
-						TX_serial <= '0';
+					if(TXDV = '1') then						
+						-- Buffer the data
+						RD_dummy <= '1';
 						TX_buf <= TXD;
+						
+						-- Goto START
 						TX_state <= START;
 					end if;
-				when START =>
-					TX_counter <= to_unsigned(0, TX_counter'length);
+				when START =>					
+					if (clock_valid_UART_tx = '1') then
+						
+						-- Clear the TX_counter
+						TX_counter <= to_unsigned(0, TX_counter'length);
+						TX_state <= RUN;
+					end if;
 					
-				when RUN =>
+				when RUN =>					
+					if (clock_valid_UART_tx = '1') then
+						-- Increase the counter
+						TX_counter <= TX_counter + 1;
+						
+						if (TX_counter = "111") then
+							-- Goto STOP when all bits are transmitted
+							TX_state <= STOP;
+						else							
+							TX_buf <= '0' & TX_buf(7 downto 1);
+						end if;
+					end if;
 				when STOP =>
+					if (clock_valid_UART_tx = '1') then
+						TX_state <= IDLE;
+					end if;
 			end case;
 		end if;
+	end process;
+	
+	TX_output : process(TX_state, TX_counter, TX_buf)
+	begin
+		case TX_state is 
+			when IDLE =>
+				TX_serial <= '1';
+			when START =>
+				TX_serial <= '0';				
+			when RUN =>
+				TX_serial <= TX_buf(0);
+			when STOP =>
+				TX_serial <= '1';
+		end case;
 	end process;
 
 
