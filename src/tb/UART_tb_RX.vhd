@@ -48,7 +48,9 @@ ARCHITECTURE behavior OF UART_tb_RX IS
          RXD : OUT  std_logic_vector(7 downto 0);
          TXD : IN  std_logic_vector(7 downto 0);
          RXDV : OUT  std_logic;
-         TXDV : IN  std_logic
+         TXDV : IN  std_logic;
+			wr : out std_logic;
+			rd : out  std_logic
         );
     END COMPONENT;
     
@@ -64,6 +66,8 @@ ARCHITECTURE behavior OF UART_tb_RX IS
    signal TX_serial : std_logic;
    signal RXD : std_logic_vector(7 downto 0);
    signal RXDV : std_logic;
+	signal WR : std_logic;
+	signal RD : std_logic;
 
    -- Clock period definitions
    constant CLK_period : time := 10 ns;
@@ -79,7 +83,9 @@ BEGIN
           RXD => RXD,
           TXD => TXD,
           RXDV => RXDV,
-          TXDV => TXDV
+          TXDV => TXDV,
+			 WR => WR,
+			 RD => RD
         );
 
    -- Clock process definitions

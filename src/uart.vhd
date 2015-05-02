@@ -34,20 +34,30 @@ entity UART is
 			-- Databus Interface, connect to FIFOs
 			RXD : out std_logic_vector(7 downto 0);
 			TXD : in  std_logic_vector(7 downto 0);
+
+			-- Data in transmit FIFO is ready for reading
+			TXDV : in std_logic;
 			
-			-- rx_data is ready for read
+			-- Data is ready for reading
 			RXDV : out std_logic;
 			
-			-- tx_data in FIFO is ready to be loaded
-			TXDV : in  std_logic;
+			-- pulse for writing data to receive FIFO
+			WR : out std_logic;
 			
-			-- ready to transmit new data
-			TXRDY : out  std_logic
+			-- pulse for reading data from transmit FIFO
+			RD : out  std_logic
 			
 			);			
 end UART;
 
 architecture Behavioral of UART is
+
+	------------------------------------------------------------------
+	-- Dummy Signals
+	signal WR_dummy : std_logic;
+	signal RD_dummy : std_logic;
+	------------------------------------------------------------------
+	
 	------------------------------------------------------------------
 	-- These are the singals used to generate f_uart and 6 * f_uart
 	
@@ -91,10 +101,20 @@ architecture Behavioral of UART is
 	signal RX_state : RX_STATES;
 	------------------------------------------------------------------
 	
+	------------------------------------------------------------------
+	-- These are the signals for data transimitting
+	signal TX_buf : std_logic_vector(7 downto 0);
+	signal TX_counter : unsigned(2 downto 0);
 	
-
-
+	
+	type TX_STATES is (IDLE, START, RUN, STOP);
+	signal TX_state : TX_STATES;
+	------------------------------------------------------------------
 begin
+	-- Set dummy signals
+	WR <= WR_dummy;
+	RD <= RD_dummy;
+
 	-- This is the process to generate the clock_valid signal
 	-- Both clock_valid_UART and clock_valid_UARTx6 are pulses
 	-- enabling the corresponding parts of the circuit.
@@ -204,12 +224,18 @@ begin
 	begin
 		if(nRST = '0') then
 			-- Async reset
+			WR_dummy <= '0';
 			RXDV <= '0';
 			RX_state <= IDLE;
 			RX_buf <= "00000000";
 			RX_counter <= to_unsigned(0, RX_counter'length);
 			
 		elsif(rising_edge(CLK)) then
+			-- the width of wr is one clock
+			if (WR_dummy = '1') then
+				WR_dummy <= '0';
+			end if;
+			
 			if (clock_valid_UARTx6 = '1') then
 				-- Run at a frequency of f_uart * 6
 				case RX_state is
@@ -247,11 +273,37 @@ begin
 					when STOP =>
 						-- Wait for at least one stop bit, then go back to IDLE
 						if (clock_valid_uart = '1') then
+							WR_dummy <= '1';
 							RX_state <= idle;
 						end if;					
 				end case;
 				
 			end if;	
+		end if;
+	end process;
+	
+	-- This is the process to receive data
+	TX_main : process(nRST, CLK)
+	begin
+		if(nRST = '0') then
+			-- Async Reset
+			-- The idle state of TX is 1
+			TX_serial <= '1';
+			TX_buf <= "00000000";
+			TX_counter <= to_unsigned(0, TX_counter'length);
+		elsif (rising_edge(CLK)) then
+			case TX_state is 
+				when IDLE =>
+					if(TXDV = '1') then
+						TX_serial <= '0';
+						TX_buf <= TXD;
+						TX_state <= START;
+					end if;
+				when START =>
+					
+				when RUN =>
+				when STOP =>
+			end case;
 		end if;
 	end process;
 
