@@ -78,7 +78,7 @@ entity RAM_Controller is
 		-- Start address
 		ADDR_base : in std_logic_vector(22 downto 0);
 		-- Number of words to be read/write
-		N_WORDS : unsigned (10 downto 0);
+		N_WORDS : in std_logic_vector (9 downto 0);
 		
 		
 		-- Input data and output data
@@ -118,17 +118,20 @@ architecture Behavioral of RAM_Controller is
 	-- The latched ADDR_base
 	signal ADDR_base_latched : std_logic_vector(22 downto 0);
 	-- The offset of the address from ADDR_base
-	signal ADDR_offset : std_logic_vector(10 downto 0);
+	signal ADDR_offset : std_logic_vector(9 downto 0);
 	
 	-- The latched N_WORDS
-	signal N_WORDS_LATCHED : unsigned(10 downto 0);
+	signal N_WORDS_LATCHED : unsigned(9 downto 0);
 	
 	-- The counter that indicates how many words have been
 	-- written / read
-	signal word_counter : unsigned(10 downto 0);
+	signal word_counter : unsigned(9 downto 0);
 	
 	-- The latched DOUT
 	signal DIN_latched : std_logic_vector(15 downto 0);
+	
+	-- The latched DATA
+	signal DATA_latched : std_logic_vector(15 downto 0);
 	
 	-- Whether the data output of FPGA is enable
 	signal nOE_FPGA : std_logic;
@@ -178,7 +181,7 @@ begin
 						& "111";-- Burst Length : Coninuous Burst	
 	
 	-- DOUT is the same as DATA, through not always valid
-	DOUT <= DATA;
+	DOUT <= DATA_latched;
 	-- Output DIN to DATA if enable
 	DATA <= DIN_latched when nOE_FPGA = '0' else "ZZZZZZZZZZZZZZZZ";
 	
@@ -206,6 +209,7 @@ begin
 			word_counter <= to_unsigned(0, word_counter'length);	
 			N_WORDS_latched <= to_unsigned(0, N_WORDS_latched'length);
 			DIN_latched <= x"0000";
+			DATA_latched <= x"0000";
 		elsif (rising_edge(CLK)) then
 			-- Strobe signals should not be longer than 1 cycle
 			DINU <= '0';
@@ -239,6 +243,8 @@ begin
 					if (WAIT_in = '1') then
 						-- Writing Completed
 						nCE <= '1';
+						BUSY <= '0';
+
 						state <= IDLE;
 					end if;
 					
@@ -282,7 +288,7 @@ begin
 						word_counter <= to_unsigned(0, word_counter'length);	
 						
 						nCE <= '0';		-- Chip enable
-						nWE <= '0';		-- Read
+						nWE <= '0';		-- Write
 						nOE <= '1';		-- Output disable	
 						nADV <= '0';	-- Address valid
 						CRE <= '0';		-- Control register disable
@@ -310,6 +316,7 @@ begin
 						-- Not waiting
 						if (word_counter + 1 = N_WORDS_latched) then
 							-- The last word							
+							DATA_latched <= DATA;
 							DOUTV <= '1';	-- DOUT valid
 							
 							nOE_FPGA <= '1'; -- Output(FPGA) disable
@@ -326,6 +333,7 @@ begin
 							state <= IDLE;
 						else
 							-- Not the last word
+							DATA_latched <= DATA;
 							DOUTV <= '1';	-- DOUT valid
 							word_counter <= word_counter + 1;
 						end if;						
