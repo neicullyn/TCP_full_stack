@@ -54,8 +54,6 @@ entity RAM_buffer is
 			-- Number of entries, note that it only counts to 1023
 			COUNT : out std_logic_vector(9 downto 0);
 			
-			-- Note that there is no check of whether the buffer is 
-			-- empty of full when trying to push or pop.
 			
 			-- indicates that the FIFO is empty
 			EMPTY : out std_logic;			
@@ -104,6 +102,9 @@ architecture Behavioral of RAM_buffer is
 	
 	signal DOUT_buff: std_logic_vector(15 downto 0);
 	
+	signal PUSH_internal : std_logic;
+	signal POP_internal : std_logic;
+	
 begin
 	Inst_BlockRAM: BlockRAM PORT MAP(
 		clka => CLK,
@@ -121,17 +122,20 @@ begin
 	EMPTY_dummy <= '1' when (head = rear) else '0';
 	FULL_dummy <= '1' when (rear + 1 = head) else '0';
 	
+	PUSH_internal <= PUSH and not FULL_dummy;
+	POP_internal <= POP and not EMPTY_dummy;
+	
 	-- Write is the same as PUSH
-	wea(0) <= PUSH;
+	wea(0) <= PUSH_internal;
 	
 	-- When reading(pop), the address of the next element to pop is head + 1
 	-- When writing(push), the address of the element to write is rear
-	addra <= std_logic_vector(head + 1) when (PUSH = '0') else std_logic_vector(rear);
+	addra <= std_logic_vector(head + 1) when (PUSH_internal = '0') else std_logic_vector(rear);
 	
 	-- The DIN of the RAM is always DIN of the module
 	dina <= DIN;
 	-- If push is different from pop, the RAM should be enable
-	ena <= PUSH xor POP;
+	ena <= PUSH_internal xor POP;
 	
 	-- DOUT is either douta or the buffered douta
 	DOUT <= douta when (DOUT_mux = DIRECT) else DOUT_buff;
@@ -147,7 +151,7 @@ begin
 			
 			DOUT_mux <= DIRECT;
 		elsif (rising_edge(CLK)) then
-			if (PUSH = '1' and POP = '0') then
+			if (PUSH_internal = '1' and POP_internal = '0') then
 				-- PUSH
 				
 				rear <= rear + 1;
@@ -170,7 +174,7 @@ begin
 
 			end if;
 			
-			if (PUSH = '0' and POP = '1') then
+			if (PUSH_internal = '0' and POP_internal = '1') then
 				-- POP
 				head <= head + 1;
 				COUNT_dummy <= COUNT_dummy - 1;			
