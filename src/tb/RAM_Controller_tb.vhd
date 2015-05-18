@@ -96,7 +96,6 @@ ARCHITECTURE behavior OF RAM_Controller_tb IS
    signal DOUTV : std_logic;
 
    -- Clock period definitions
-   constant CLK_out_period : time := 10 ns;
    constant CLK_period : time := 10 ns;
 	
 	type RAM_STATE_TYPE is (IDLE, BCR, RD_STATE, WR_STATE);
@@ -131,14 +130,6 @@ BEGIN
           DOUTV => DOUTV
         );
 
-   -- Clock process definitions
-   CLK_out_process :process
-   begin
-		CLK_out <= '0';
-		wait for CLK_out_period/2;
-		CLK_out <= '1';
-		wait for CLK_out_period/2;
-   end process;
  
    CLK_process :process
    begin

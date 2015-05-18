@@ -93,6 +93,7 @@ entity RAM_Controller is
 		RD : in std_logic;
 		
 		-- Both DINU and DOUTV are 1-clock strobe signals
+		
 		-- DIN has been latched, needs updating
 		DINU : out std_logic;
 		-- DOUT is ready, needs storing
@@ -102,6 +103,8 @@ entity RAM_Controller is
 end RAM_Controller;
 
 architecture Behavioral of RAM_Controller is
+
+	signal CLK_out_dummy : std_logic;
 	type STATES is (RESET, SET_BCR, IDLE, READING_WAIT, READING, WRITING_WAIT, WRITING);
 	signal state : STATES;
 	
@@ -137,8 +140,15 @@ architecture Behavioral of RAM_Controller is
 	signal nOE_FPGA : std_logic;
 	
 begin
-	-- No need to divide the frequency
-	CLK_out <= CLK;
+	CLK_out <= CLK_out_dummy;
+	clk_proc: process(nRST, CLK)
+	begin
+		if(nRST = '0') then
+			CLK_out_dummy <= '0';
+		elsif(rising_edge(CLK)) then
+			CLK_out_dummy <= not CLK_out_dummy;
+		end if;	
+	end process;
 	
 	-- If timing requirement can not be achieved:
 	-- CLK_out <= ~ CLK_OUT, per CLK
@@ -214,169 +224,190 @@ begin
 			-- Strobe signals should not be longer than 1 cycle
 			DINU <= '0';
 			DOUTV <= '0';
-			
+
 			case state is
 				when RESET =>
-
-					ADDR_mux_sel <= ADDR_MUX_COMMAND;
-					
-					nCE <= '0';		-- Chip enable
-					nWE <= '0';		-- Write
-					nOE <= '1';		-- Output disable	
-					nADV <= '0';	-- Address valid
-					CRE <= '1';		-- Control register enable
-					nLB <= '1';		-- Lower bits disable
-					nUB <= '1';		-- Hight bits disable					
-					state <= SET_BCR;
-					
-				when SET_BCR =>
-					ADDR_mux_sel <= ADDR_MUX_ADDR;
-					
-					nCE <= '0';		-- Chip enable
-					nWE <= '1';		-- Read
-					nOE <= '1';		-- Output disable	
-					nADV <= '1';	-- Address not valid
-					CRE <= '0';		-- Control register disable
-					nLB <= '1';		-- Lower bits disable
-					nUB <= '1';		-- Hight bits disable	
-					
-					if (WAIT_in = '1') then
-						-- Writing Completed
-						nCE <= '1';
-						BUSY <= '0';
-
-						state <= IDLE;
-					end if;
-					
-				when IDLE =>
-					if (WR = '0' and RD = '1') then
-						-- Going to read
-						BUSY <= '1';
-						nOE_FPGA <= '1'; -- Output(FPGA) disable
-						
-						-- Latch the start address and the number of words
-						ADDR_base_latched <= ADDR_base;
-						N_WORDS_latched <= unsigned(N_WORDS);
-						
-						word_counter <= to_unsigned(0, word_counter'length);	
-						
-						nCE <= '0';		-- Chip enable
-						nWE <= '1';		-- Read
-						nOE <= '0';		-- Output enable	
-						nADV <= '0';	-- Address valid
-						CRE <= '0';		-- Control register disable
-						nLB <= '0';		-- Lower bits enable
-						nUB <= '0';		-- Hight bits enable	
-						
-						state <= READING_WAIT;
-					end if;
-					if (WR = '1' and RD = '0') then
-						-- Going to write
-						BUSY <= '1';
-						nOE_FPGA <= '0'; -- Output(FPGA) disable
-						
-						-- DOUT can be updated
-						DINU <= '1';
-						
-						-- Latch the start address and the number of words
-						ADDR_base_latched <= ADDR_base;
-						N_WORDS_latched <= unsigned(N_WORDS);
-						
-						-- Latch the output
-						DIN_latched <= DIN;
-						
-						word_counter <= to_unsigned(0, word_counter'length);	
+					if (CLK_out_dummy = '1') then
+						-- Change on falling edge
+						ADDR_mux_sel <= ADDR_MUX_COMMAND;
 						
 						nCE <= '0';		-- Chip enable
 						nWE <= '0';		-- Write
 						nOE <= '1';		-- Output disable	
 						nADV <= '0';	-- Address valid
-						CRE <= '0';		-- Control register disable
-						nLB <= '0';		-- Lower bits enable
-						nUB <= '0';		-- Hight bits enable	
+						CRE <= '1';		-- Control register enable
+						nLB <= '1';		-- Lower bits disable
+						nUB <= '1';		-- Hight bits disable					
+						state <= SET_BCR;
+					end if;
+					
+				when SET_BCR =>
+					if (CLK_out_dummy = '1') then
+						-- Change on falling edge
+						ADDR_mux_sel <= ADDR_MUX_ADDR;
 						
-						state <= WRITING_WAIT;					
+						nCE <= '0';		-- Chip enable
+						nWE <= '1';		-- Read
+						nOE <= '1';		-- Output disable	
+						nADV <= '1';	-- Address not valid
+						CRE <= '0';		-- Control register disable
+						nLB <= '1';		-- Lower bits disable
+						nUB <= '1';		-- Hight bits disable	
+						
+						if (WAIT_in = '1') then
+							-- Writing Completed
+							nCE <= '1';
+							BUSY <= '0';
+
+							state <= IDLE;
+						end if;
+					end if;
+				when IDLE =>
+					if (CLK_out_dummy = '1') then
+						-- Change on falling edge
+						if (WR = '0' and RD = '1') then
+							-- Going to read
+							BUSY <= '1';
+							nOE_FPGA <= '1'; -- Output(FPGA) disable
+							
+							-- Latch the start address and the number of words
+							ADDR_base_latched <= ADDR_base;
+							N_WORDS_latched <= unsigned(N_WORDS);
+							
+							word_counter <= to_unsigned(0, word_counter'length);	
+							
+							nCE <= '0';		-- Chip enable
+							nWE <= '1';		-- Read
+							nOE <= '0';		-- Output enable	
+							nADV <= '0';	-- Address valid
+							CRE <= '0';		-- Control register disable
+							nLB <= '0';		-- Lower bits enable
+							nUB <= '0';		-- Hight bits enable	
+							
+							state <= READING_WAIT;
+						end if;
+						if (WR = '1' and RD = '0') then
+							-- Going to write
+							BUSY <= '1';
+							nOE_FPGA <= '0'; -- Output(FPGA) disable
+							
+							-- DOUT can be updated
+							DINU <= '1';
+							
+							-- Latch the start address and the number of words
+							ADDR_base_latched <= ADDR_base;
+							N_WORDS_latched <= unsigned(N_WORDS);
+							
+							-- Latch the output
+							DIN_latched <= DIN;
+							
+							word_counter <= to_unsigned(0, word_counter'length);	
+							
+							nCE <= '0';		-- Chip enable
+							nWE <= '0';		-- Write
+							nOE <= '1';		-- Output disable	
+							nADV <= '0';	-- Address valid
+							CRE <= '0';		-- Control register disable
+							nLB <= '0';		-- Lower bits enable
+							nUB <= '0';		-- Hight bits enable	
+							
+							state <= WRITING_WAIT;					
+						end if;
 					end if;
 					
 				when READING_WAIT =>
 					-- Wait for another cycle so that WAIT
 					-- can be asserted
-					nCE <= '0';		-- Chip enable
-					nWE <= '1';		-- Read
-					nOE <= '0';		-- Output enable	
-					nADV <= '1';	-- Address not valid
-					CRE <= '0';		-- Control register disable
-					nLB <= '0';		-- Lower bits enable
-					nUB <= '0';		-- Hight bits enable	
 					
-					state <= READING;
+					if (CLK_out_dummy = '1') then
+						-- Change on falling edge
+						nCE <= '0';		-- Chip enable
+						nWE <= '1';		-- Read
+						nOE <= '0';		-- Output enable	
+						nADV <= '1';	-- Address not valid
+						CRE <= '0';		-- Control register disable
+						nLB <= '0';		-- Lower bits enable
+						nUB <= '0';		-- Hight bits enable	
+						
+						state <= READING;
+					end if;
 					
 				when READING =>
-					if (WAIT_in = '1') then
-						-- Not waiting
-						if (word_counter + 1 = N_WORDS_latched) then
-							-- The last word							
-							DATA_latched <= DATA;
-							DOUTV <= '1';	-- DOUT valid
-							
-							nOE_FPGA <= '1'; -- Output(FPGA) disable
-							BUSY <= '0';   -- Not Busy
-							
-							nCE <= '1';		-- Chip disable
-							nWE <= '1';		-- Read
-							nOE <= '1';		-- Output disable	
-							nADV <= '1';	-- Address not valid
-							CRE <= '0';		-- Control register disable
-							nLB <= '1';		-- Lower bits disable
-							nUB <= '1';		-- Hight bits disable
-							
-							state <= IDLE;
-						else
-							-- Not the last word
-							DATA_latched <= DATA;
-							DOUTV <= '1';	-- DOUT valid
-							word_counter <= word_counter + 1;
-						end if;						
-					end if;			
+					if (CLK_out_dummy = '0') then
+					-- Latch on rising edge
+						if (WAIT_in = '1') then
+							-- Not waiting
+							if (word_counter + 1 = N_WORDS_latched) then
+								-- The last word							
+								DATA_latched <= DATA;
+								DOUTV <= '1';	-- DOUT valid
+								
+								nOE_FPGA <= '1'; -- Output(FPGA) disable
+								BUSY <= '0';   -- Not Busy
+								
+								nCE <= '1';		-- Chip disable
+								nWE <= '1';		-- Read
+								nOE <= '1';		-- Output disable	
+								nADV <= '1';	-- Address not valid
+								CRE <= '0';		-- Control register disable
+								nLB <= '1';		-- Lower bits disable
+								nUB <= '1';		-- Hight bits disable
+								
+								state <= IDLE;
+							else
+								-- Not the last word
+								DATA_latched <= DATA;
+								DOUTV <= '1';	-- DOUT valid
+								word_counter <= word_counter + 1;
+							end if;						
+						end if;	
+					end if;
 				
 				when WRITING_WAIT =>
 					-- Wait for another cycle so that WAIT
 					-- can be asserted
-					nCE <= '0';		-- Chip enable
-					nWE <= '0';		-- Write
-					nOE <= '1';		-- Output disable	
-					nADV <= '1';	-- Address not valid
-					CRE <= '0';		-- Control register disable
-					nLB <= '0';		-- Lower bits enable
-					nUB <= '0';		-- Hight bits enable	
 					
-					state <= WRITING;
+					if (CLK_out_dummy = '1') then
+						-- Change on falling edge
+						nCE <= '0';		-- Chip enable
+						nWE <= '0';		-- Write
+						nOE <= '1';		-- Output disable	
+						nADV <= '1';	-- Address not valid
+						CRE <= '0';		-- Control register disable
+						nLB <= '0';		-- Lower bits enable
+						nUB <= '0';		-- Hight bits enable	
+						
+						state <= WRITING;
+					end if;
 				when WRITING =>
-					if (WAIT_in = '1') then
-						-- Not waiting
-						if (word_counter + 1 = N_WORDS_latched) then
-							-- The last word							
-							
-							nOE_FPGA <= '1'; -- Output(FPGA) disable
-							BUSY <= '0';   -- Not Busy
-							
-							nCE <= '1';		-- Chip disable
-							nWE <= '1';		-- Read
-							nOE <= '1';		-- Output disable	
-							nADV <= '1';	-- Address not valid
-							CRE <= '0';		-- Control register disable
-							nLB <= '1';		-- Lower bits disable
-							nUB <= '1';		-- Hight bits disable
-							
-							state <= IDLE;
-						else
-							-- Not the last word
-							DINU <= '1';	-- DIN can be updated
-							DIN_latched <= DIN;
-							
-							word_counter <= word_counter + 1;
-						end if;						
-					end if;		
+					if (CLK_out_dummy = '1') then
+					-- Change on falling edge
+						if (WAIT_in = '1') then
+							-- Not waiting
+							if (word_counter + 1 = N_WORDS_latched) then
+								-- The last word							
+								
+								nOE_FPGA <= '1'; -- Output(FPGA) disable
+								BUSY <= '0';   -- Not Busy
+								
+								nCE <= '1';		-- Chip disable
+								nWE <= '1';		-- Read
+								nOE <= '1';		-- Output disable	
+								nADV <= '1';	-- Address not valid
+								CRE <= '0';		-- Control register disable
+								nLB <= '1';		-- Lower bits disable
+								nUB <= '1';		-- Hight bits disable
+								
+								state <= IDLE;
+							else
+								-- Not the last word
+								DINU <= '1';	-- DIN can be updated
+								DIN_latched <= DIN;
+								
+								word_counter <= word_counter + 1;
+							end if;						
+						end if;		
+					end if;
 			end case;
 		end if;
 	end process;
