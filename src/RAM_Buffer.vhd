@@ -64,7 +64,7 @@ entity RAM_buffer is
 end RAM_buffer;
 
 architecture Behavioral of RAM_buffer is
-
+	
 	COMPONENT BlockRAM
 	PORT(
 		clka : IN std_logic;

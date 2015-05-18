@@ -234,12 +234,12 @@ BEGIN
 			
 			if (RAM_state = RD_STATE) then
 				RAM_counter <= RAM_counter + 1;
-				WAIT_in <= RAM_counter(0);
+				WAIT_in <= RAM_counter(1);
 			end if;
 			
 			if (RAM_state = WR_STATE) then
 				RAM_counter <= RAM_counter + 1;
-				WAIT_in <= RAM_counter(0);
+				WAIT_in <= RAM_counter(1);
 			end if;
 			
 		end if;
