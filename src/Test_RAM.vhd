@@ -276,10 +276,11 @@ begin
 					RAM_WR <= '1';
 					RAM_RD <= '0';
 					if(RAM_BUSY = '1') then
+						RAM_WR <= '0';
 						test_ram_logic <= WRITE_DONE;
 					end if;
 				when WRITE_DONE =>
-					RAM_WR <= '0';
+					
 					if(RAM_BUSY = '0') then
 						test_ram_logic <= STATE_READ;
 					end if;
@@ -291,6 +292,7 @@ begin
 					RAM_WR <= '0';
 					RAM_RD <= '1';
 					if(RAM_BUSY = '1') then
+						RAM_RD <= '0';
 						test_ram_logic <= READ_DONE;
 					end if;					
 				when READ_DONE =>
