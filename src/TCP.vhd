@@ -89,9 +89,28 @@ architecture Behavioral of TCP is
 	signal trs_checksum : std_logic_vector(15 downto 0);
 	signal trs_urgent_pointer : std_logic_vector(15 downto 0);
 	
-	-- Transmitter
-	
 	-- TCP Protocol
+	
+	type tcp_state_type is (S_CLOSED, S_LISTEN, S_SYN_RECEIVED, S_SYN_SENT, S_ESTABLISHED,
+						S_FIN_WAIT1, S_FIN_WAIT2, S_CLOSING, S_TIME_WAIT, S_CLOSE_WAIT, S_LAST_ACK);
+						
+	signal tcp_state : tcp_state_type;
+	
+	signal p_listen : std_logic;
+	signal p_setup : std_logic;
+	signal p_stop : std_logic;
+	
+	signal p_syn : std_logic;
+	signal p_rst : std_logic;
+	signal p_ack : std_logic;
+	signal p_fin : std_logic;
+	
+	signal p_timeout: std_logic;
+	
+	signal p_timeout_CLOSE_WAIT : std_logic;
+	signal p_timeout_TIME_WAIT : std_logic;
+	
+	
 begin
 	rcv_counter_inc <= rcv_counter + 1;
 	
@@ -236,11 +255,13 @@ begin
 							rcv_counter <= to_unsigned(0, rcv_counter'length);
 						end if;
 					when S_DATA =>
+						-- TODO
 						if ( EOL = '1') then
 							-- Last byte
 							packet_rcv_state <= S_HANDLE;
 						end if;
 					when S_HANDLE =>
+						-- TODO
 					
 					when S_DUMP =>
 						if (EOL = '1') then
@@ -387,6 +408,7 @@ begin
 							
 							trs_aux_counter <= trs_aux_counter + 1;
 						else
+							-- TODO
 							-- The second byte is over
 							-- Start transmitting data
 							
@@ -395,6 +417,7 @@ begin
 						end if;
 					
 					when S_DATA =>
+						-- TODO
 						-- Has not been completed
 						packet_trs_state <= S_HANDLE;
 					
@@ -405,5 +428,127 @@ begin
 		end if;
 	end process;
 	
+	
+	protocol_proc: process (nRST, CLK)
+	begin
+		if(nRST = '0') then
+			tcp_state <= S_CLOSED;
+		elsif(rising_edge(CLK)) then
+			case tcp_state is
+				when S_CLOSED =>
+					if (p_listen = '1') then
+						tcp_state <= S_LISTEN;
+					elsif (p_setup = '1') then
+						-- TODO
+						-- Send Syn packet and sent here
+						tcp_state <= S_SYN_SENT;
+					end if;
+					
+				when S_LISTEN =>
+					if (p_syn = '1') then
+						-- TODO
+						-- Record where the syn comes from
+						
+						-- TODO
+						-- Send SYN + ACK
+						
+						-- TODO
+						-- Setup Timer
+						tcp_state <= S_SYN_RECEIVED;
+					end if;
+					
+				when S_SYN_RECEIVED =>
+					if (p_ack = '1') then
+						-- Need to check if this is the correct sender
+						tcp_state <= S_ESTABLISHED;
+					end if;
+				
+				when S_SYN_SENT =>
+					if (p_syn = '1' and p_ack = '0') then
+						-- Simutaneous Open
+						
+						-- TODO
+						-- Send ACK
+						
+						tcp_state <= S_SYN_RECEIVED;
+					end if;
+					
+					if (p_syn = '1' and p_ack = '1') then
+					
+						tcp_state <= S_ESTABLISHED;
+					end if;
+				
+				when S_ESTABLISHED =>
+					if (p_stop = '1') then
+						-- Active stop
+						
+						-- TODO
+						-- Send FIN
+						tcp_state <= S_FIN_WAIT1;
+					end if;
+					
+					if (p_fin = '1') then
+						-- Passive stop
+						
+						-- TODO
+						-- Send ACK
+						
+						-- TODO
+						-- Setup CLOSE_WAIT_TIMER
+						tcp_state <= S_CLOSE_WAIT;
+					end if;
+					
+				when S_FIN_WAIT1 =>
+					if (p_ack = '1') then
+						tcp_state <= S_FIN_WAIT2;
+					end if;
+					
+					if (p_fin = '1') then
+						-- Simutaneous Close
+						
+						-- TODO
+						-- Send ACK
+						tcp_state <= S_CLOSING;
+					end if;
+				
+				when S_FIN_WAIT2 =>
+					if (p_fin = '1') then
+						-- TODO
+						-- Send ACK
+						
+						-- TODO
+						-- Setup TIME_WAIT_TIMER
+						tcp_state <= S_TIME_WAIT;
+					end if;
+				
+				when S_CLOSING =>
+					if (p_ack = '1') then
+						-- TODO
+						-- Setup TIME_WAIT_TIMER
+						tcp_state <= S_TIME_WAIT;
+					end if;
+				
+				when S_TIME_WAIT =>
+					if (p_timeout_TIME_WAIT = '1') then
+						tcp_state <= S_CLOSED;
+					end if;
+					
+				when S_CLOSE_WAIT =>
+					if (p_timeout_CLOSE_WAIT = '1') then
+						-- TODO
+						-- Send FIN
+						tcp_state <= S_LAST_ACK;
+					end if;
+					
+				when S_LAST_ACK =>
+					if (p_ack = '1') then
+						tcp_state <= S_CLOSED;
+					end if;
+					
+					
+				
+			end case;
+		end if;
+	end process;
 end Behavioral;
 
