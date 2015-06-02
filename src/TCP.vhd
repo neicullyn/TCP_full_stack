@@ -55,6 +55,7 @@ architecture Behavioral of TCP is
 	type packet_rcv_state_type is (S_SRC_PORT, S_DEST_PORT, S_SEQ_NUM, S_ACK_NUM, S_DATA_OFFSET, S_FLAGS, 
 									  S_WINDOW_SIZE, S_CHECKSUM, S_URGENT_POINTER, S_OPTIONS, S_DATA, S_HANDLE, S_DUMP);
 	signal packet_rcv_state : packet_rcv_state_type;
+	
 	signal rcv_counter : unsigned(10 downto 0); -- 11-bit counter, 0~2047
 	signal rcv_counter_inc : unsigned(10 downto 0); -- rcv_counter + 1
 	signal rcv_aux_counter : unsigned(1 downto 0); -- Smaller counter for rcv
@@ -69,11 +70,31 @@ architecture Behavioral of TCP is
 	signal rcv_checksum : std_logic_vector(15 downto 0);
 	signal rcv_urgent_pointer : std_logic_vector(15 downto 0);
 	
+	-- Transimiter
+	type packet_trs_state_type is (S_IDLE, S_SRC_PORT, S_DEST_PORT, S_SEQ_NUM, S_ACK_NUM, S_DATA_OFFSET, S_FLAGS,
+										S_WINDOW_SIZE, S_CHECKSUM, S_URGENT_POINTER, S_DATA, S_HANDLE);
+	signal packet_trs_state: packet_trs_state_type;
+	
+	signal trs_counter : unsigned(10 downto 0); -- 11-bit counter, 0~2047
+	signal trs_counter_inc : unsigned(10 downto 0); -- rcv_counter + 1
+	signal trs_aux_counter : unsigned(1 downto 0); -- Smaller counter for rcv
+	
+	signal trs_src_port : std_logic_vector(15 downto 0);
+	signal trs_dest_port : std_logic_vector(15 downto 0);
+	signal trs_seq_num : std_logic_vector(31 downto 0);
+	signal trs_ack_num : std_logic_vector(31 downto 0);
+	signal trs_data_offset : std_logic_vector(3 downto 0);
+	signal trs_flags : std_logic_vector(8 downto 0);
+	signal trs_window_size : std_logic_vector(15 downto 0);
+	signal trs_checksum : std_logic_vector(15 downto 0);
+	signal trs_urgent_pointer : std_logic_vector(15 downto 0);
+	
 	-- Transmitter
 	
 	-- TCP Protocol
 begin
 	rcv_counter_inc <= rcv_counter + 1;
+	
 	rcv_proc : process (nRST, CLK)
 	begin
 		if(nRST = '0') then
@@ -234,6 +255,155 @@ begin
 		end if;
 	end process;
 
+	
+	trs_counter_inc <= trs_counter;
+	trs_proc: process (nRST, CLK)
+	begin
+		if(nRST = '0') then
+			packet_trs_state <= S_IDLE;
+			trs_aux_counter <= to_unsigned(0, trs_aux_counter'length);
+			trs_counter <= to_unsigned(0, trs_counter'length);
+		elsif (rising_edge(CLK)) then
+			if(RdU = '1' or packet_trs_state = S_IDLE) then
+				if(packet_trs_state /= S_IDLE) then
+					trs_counter <= trs_counter_inc;
+				end if;
+				case packet_trs_state is
+					when S_IDLE =>
+						TXDU <= trs_src_port(15 downto 8);
+						trs_aux_counter <= to_unsigned(0, trs_aux_counter'length);
+						
+						packet_trs_state <= S_SRC_PORT;
+						
+					when S_SRC_PORT =>
+						if(trs_aux_counter = 0) then
+							TXDU <= trs_src_port(7 downto 0);
+							trs_aux_counter <= trs_aux_counter + 1;
+						else
+							TXDU <= trs_dest_port(15 downto 8);
+							trs_aux_counter <= to_unsigned(0, trs_aux_counter'length);
+							
+							packet_trs_state <= S_DEST_PORT;
+						end if;
+						
+					when S_DEST_PORT =>
+						if(trs_aux_counter = 0) then
+							TXDU <= trs_dest_port(7 downto 0);
+							trs_aux_counter <= trs_aux_counter + 1;
+						else
+							TXDU <= trs_seq_num(31 downto 24);
+							trs_aux_counter <= to_unsigned(0, trs_aux_counter'length);
+							
+							packet_trs_state <= S_SEQ_NUM;
+						end if;
+						
+					when S_SEQ_NUM =>
+						case trs_aux_counter is
+							when "00" =>
+							-- First byte is over
+								TXDU <= trs_seq_num(23 downto 16);
+							when "01" =>
+							-- Second byte is over
+								TXDU <= trs_seq_num(15 downto 8);
+							when "10" =>
+							-- Third byte is over
+								TXDU <= trs_seq_num(7 downto 0);
+							when others =>
+							-- Forth byte is over
+								TXDU <= trs_ack_num(31 downto 24);
+								
+								packet_trs_state <= S_ACK_NUM;
+						end case;
+						-- trs_aux_counter: 0->1->2->3->0
+						trs_aux_counter <= trs_aux_counter + 1;
+						
+					when S_ACK_NUM =>
+						case trs_aux_counter is
+							when "00" =>
+							-- First byte is over
+								TXDU <= trs_ack_num(23 downto 16);
+							when "01" =>
+							-- Second byte is over
+								TXDU <= trs_ack_num(15 downto 8);
+							when "10" =>
+							-- Third byte is over
+								TXDU <= trs_ack_num(7 downto 0);
+							when others =>
+							-- Forth byte is over
+							-- Output data offset
+								TXDU(7 downto 4) <= trs_data_offset;
+								TXDU(3 downto 1) <= "000";
+								TXDU(0) <= trs_flags(8);
+								
+								packet_trs_state <= S_DATA_OFFSET;
+						end case;
+						-- trs_aux_counter: 0->1->2->3->0
+						trs_aux_counter <= trs_aux_counter + 1;
+					
+					when S_DATA_OFFSET =>
+						-- Data offset is over, output flags
+						TXDU <= trs_flags(7 downto 0);
+						packet_trs_state <= S_FLAGS;
+					
+					when S_FLAGS =>
+						-- Flags are transmitted, output window_size
+						TXDU <= trs_window_size(15 downto 8);
+						trs_aux_counter <= to_unsigned(0, trs_aux_counter'length);
+						
+						packet_trs_state <= S_WINDOW_SIZE;
+					
+					when S_WINDOW_SIZE =>
+						if(trs_aux_counter = 0) then
+							-- The first byte is over
+							TXDU <= trs_window_size(7 downto 0);
+							
+							trs_aux_counter <= trs_aux_counter + 1;
+						else
+							-- The Second byte is over
+							TXDU <= trs_checksum(15 downto 8);
+							
+							trs_aux_counter <= to_unsigned(0, trs_aux_counter'length);
+							packet_trs_state <= S_CHECKSUM;
+						end if;
+					
+					when S_CHECKSUM =>
+						if(trs_aux_counter = 0) then
+							-- The first byte is over
+							TXDU <= trs_checksum(7 downto 0);
+							
+							trs_aux_counter <= trs_aux_counter + 1;
+						else
+							-- The second byte is over
+							TXDU <= trs_urgent_pointer(15 downto 8);
+							
+							trs_aux_counter <= to_unsigned(0, trs_aux_counter'length);
+							packet_trs_state <= S_URGENT_POINTER;
+						end if;
+					
+					when S_URGENT_POINTER =>
+						if(trs_aux_counter = 0) then
+							-- The first byte is over
+							TXDU <= trs_urgent_pointer(7 downto 0);
+							
+							trs_aux_counter <= trs_aux_counter + 1;
+						else
+							-- The second byte is over
+							-- Start transmitting data
+							
+							-- TXDU <= S_DATA
+							packet_trs_state <= S_DATA;
+						end if;
+					
+					when S_DATA =>
+						-- Has not been completed
+						packet_trs_state <= S_HANDLE;
+					
+					when S_HANDLE =>
+						packet_trs_state <= S_IDLE;						
+				end case;
+			end if;		
+		end if;
+	end process;
 	
 end Behavioral;
 
