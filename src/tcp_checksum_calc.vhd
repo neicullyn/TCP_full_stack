@@ -22,7 +22,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx primitives in this code.
@@ -82,7 +82,7 @@ architecture Behavioral of tcp_checksum_calc is
 											S_SEQ_NUM1, S_SEQ_NUM2,
 											S_ACK_NUM1, S_ACK_NUM2,
 											S_OFST_n_FLAGS, S_WINDOW_SIZE,
-											S_CHECKSUM_IN, S_URGENT_POINTER
+											S_CHECKSUM_IN, S_URGENT_POINTER,
 											S_OPTIONS, S_DATA,
 											S_DONE);
 											
@@ -90,7 +90,7 @@ architecture Behavioral of tcp_checksum_calc is
 	
 											
 											
-	signal result : std_logic_vector(15 downto 0);
+	signal result : unsigned(15 downto 0);
 begin
 	process (nRST, CLK)
 	begin
@@ -118,88 +118,89 @@ begin
 					end if;
 					
 				when S_SRC_ADDR1 =>
-					result <= result xor src_addr(31 downto 16);
+					result <= result + unsigned(src_addr(31 downto 16));
 					checksum_calc_state <= S_SRC_ADDR2;
 				
 				when S_SRC_ADDR2 =>
-					result <= result xor src_addr(15 downto 0);
+					result <= result + unsigned(src_addr(15 downto 0));
 					checksum_calc_state <= S_DST_ADDR1;
 				
 				when S_DST_ADDR1 =>
-					result <= result xor dst_addr(31 downto 16);
+					result <= result + unsigned(dst_addr(31 downto 16));
 					checksum_calc_state <= S_DST_ADDR2;
 				
 				when S_DST_ADDR2 =>
-					result <= result xor dst_addr(15 downto 0);
+					result <= result + unsigned(dst_addr(15 downto 0));
 					checksum_calc_state <= S_RES_n_PRTCL;
 					
 				when S_RES_n_PRTCL =>
-					result(15 downto 8) <= result(15 downto 8) xor reserved;
-					result(7 downto 0) <= result(7 downto 0) xor protocol;
+					result <= result + unsigned(reserved & protocol);
 					checksum_calc_state <= S_SEG_LEN;
 				
 				when S_SEG_LEN =>
-					result <= result xor tcp_segment_length;
+					result <= result + unsigned(tcp_segment_length);
 					checksum_calc_state <= S_SRC_PORT;
 				
 				when S_SRC_PORT =>
-					result <= result xor src_port;
+					result <= result + unsigned(src_port);
 					checksum_calc_state <= S_DST_PORT;
 				
 				when S_DST_PORT =>
-					result <= result xor dst_port;
+					result <= result + unsigned(dst_port);
 					checksum_calc_state <= S_SEQ_NUM1;
 					
 				when S_SEQ_NUM1 =>
-					result <= result xor seq_num(31 downto 16);
+					result <= result + unsigned(seq_num(31 downto 16));
 					checksum_calc_state <= S_SEQ_NUM2;
 				
 				when S_SEQ_NUM2 =>
-					result <= result xor seq_num(15 downto 0);
+					result <= result + unsigned(seq_num(15 downto 0));
 					checksum_calc_state <= S_ACK_NUM1;
 				
 				when S_ACK_NUM1 =>
-					result <= result xor ack_num(31 downto 16);
+					result <= result + unsigned(ack_num(31 downto 16));
 					checksum_calc_state <= S_ACK_NUM2;
 					
 				when S_ACK_NUM2 =>
-					result <= result xor ack_num(15 downto 0);
+					result <= result + unsigned(ack_num(15 downto 0));
 					checksum_calc_state <= S_OFST_n_FLAGS;
 				
 				when S_OFST_n_FLAGS =>
-					result(15 downto 12) <= result(15 downto 12) xor data_offset;
-					result(11 downto 9) <= result(11 downto 9) xor "000";
-					result(8 downto 0) <= result(8 downto 0) xor flags;
+					result <= result + unsigned(data_offset & "000" & flags);
 					checksum_calc_state <= S_WINDOW_SIZE;
 				
 				when S_WINDOW_SIZE =>
-					result <= result xor window_size;
+					result <= result + unsigned(window_size);
 					checksum_calc_state <= S_CHECKSUM_IN;
 				
 				when S_CHECKSUM_IN =>
-					result <= result xor checksum_in;
+					result <= result + unsigned(checksum_in);
 					checksum_calc_state <= S_URGENT_POINTER;
 				
 				when S_URGENT_POINTER =>
-					result <= result xor urgent_pointer;
+					result <= result + unsigned(urgent_pointer);
 					checksum_calc_state <= S_OPTIONS;
 				
 				when S_OPTIONS =>
 					if (checksum_for_options_valid = '1') then
-						result <= result xor checksum_for_options;
+						result <= result + unsigned(checksum_for_options);
 						checksum_calc_state <= S_DATA;
 					end if;
 					
 				when S_DATA =>
 					if (checksum_for_data_valid = '1') then
-						result <= result xor checksum_for_data;
+						result <= result + unsigned(checksum_for_data);
 						checksum_calc_state <= S_DONE;
 					end if;
 				
 				when S_DONE =>
-					checksum_out <= result;
-					checksum_out_valid = '1';
-					success <= '1' when result = x"0000" else '0';
+					checksum_out <= not std_logic_vector(result);
+					checksum_out_valid <= '1';
+					if( result = x"FFFF") then
+						success <= '1';
+					else
+						success <= '0';
+					end if;
 					checksum_calc_state <= S_IDLE;			
 				
 			end case;
