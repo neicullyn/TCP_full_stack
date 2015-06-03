@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date:    13:22:46 06/02/2015 
+-- Create Date:    22:10:08 06/02/2015 
 -- Design Name: 
--- Module Name:    tcp_ack_maker - Behavioral 
+-- Module Name:    tcp_packet_encoder - Behavioral 
 -- Project Name: 
 -- Target Devices: 
 -- Tool versions: 
@@ -29,10 +29,10 @@ use IEEE.STD_LOGIC_1164.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity tcp_ack_maker is
-end tcp_ack_maker;
+entity tcp_packet_encoder is
+end tcp_packet_encoder;
 
-architecture Behavioral of tcp_ack_maker is
+architecture Behavioral of tcp_packet_encoder is
 
 begin
 
