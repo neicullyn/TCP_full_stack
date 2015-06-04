@@ -181,6 +181,7 @@ BEGIN
       core_rst <= '0';
       core_syn <= '1';
       core_fin <= '0';
+		
       core_push <= '1';
 	  
 		wait until core_pushing = '1';
@@ -204,7 +205,24 @@ BEGIN
       app_data_addr <= (others => '0');
       app_data_addr(7 downto 0) <= x"FF";
       app_data_len <= std_logic_vector(to_unsigned(7, app_data_len'length));
-      app_push <= '0';
+		
+      app_push <= '1';
+	  
+		wait until app_pushing = '1';
+		
+		app_push <= '0';
+		
+		wait until app_pushing = '0';
+		
+		app_dst_addr <= x"11111111";
+      app_dst_port <= x"1111";
+      app_ack_num  <= x"00001000";
+      app_en_data <= '1';
+      app_data_addr <= (others => '0');
+      app_data_addr(7 downto 0) <= x"11";
+      app_data_len <= std_logic_vector(to_unsigned(11, app_data_len'length));
+		
+      app_push <= '1';
 	  
 		wait until app_pushing = '1';
 		
@@ -215,15 +233,23 @@ BEGIN
 	
 	read_proc: process
 	begin
-		wait until empty = '0';
-		update <= '1';
-		wait for CLK_period;
-		update <= '0';
-		wait until valid = '1';
+	   wait for 100 ns;	
+
+      wait for CLK_period*10;
 		
 		wait until empty = '0';
 		update <= '1';
-		wait for CLK_period;
+		wait for 3 * CLK_period;
+		update <= '0';
+		
+		wait until valid = '1' and empty = '0';		
+		update <= '1';
+		wait for 3 * CLK_period;
+		update <= '0';
+		
+		wait until valid = '1' and empty = '0';		
+		update <= '1';
+		wait for 3 * CLK_period;
 		update <= '0';
 	end process;
 

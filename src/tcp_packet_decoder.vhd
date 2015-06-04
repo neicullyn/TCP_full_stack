@@ -89,7 +89,7 @@ entity tcp_packet_decoder is
 end tcp_packet_decoder;
 
 architecture Behavioral of tcp_packet_decoder is
-	type pop_state_type is (S_IDLE, S_DST_ADDR1, S_DST_ADDR2, S_DST_ADDR3,
+	type pop_state_type is (S_IDLE, S_WAIT, S_DST_ADDR1, S_DST_ADDR2, S_DST_ADDR3,
 							 S_DST_ADDR4, S_DST_PORT1, S_DST_PORT2, 
 							 S_ACK_NUM1, S_ACK_NUM2, S_ACK_NUM3, S_ACK_NUM4,
 							 S_FLAGS, S_EN_n_DATA_ADDR1, S_DATA_ADDR2, S_DATA_ADDR3,
@@ -109,16 +109,21 @@ begin
 		if (nRST = '0') then
 			pop_state <= S_IDLE;			
 			valid <= '0';
+			rd <= '0';
 		elsif (rising_edge(CLK)) then
 			rd <= '0'; -- rd is a strobe signal
 			case pop_state is
 				when S_IDLE =>
-					if (start <= '1') then
+					if (start = '1') then
 						valid <= '0';
-						dst_addr(31 downto 24) <= encoded_data;
 						rd <= '1';
-						pop_state <= S_DST_ADDR1;
+						pop_state <= S_WAIT;
 					end if;
+					
+				when S_WAIT	=>									
+					dst_addr(31 downto 24) <= encoded_data;
+					rd <= '1';
+					pop_state <= S_DST_ADDR1;
 					
 				when S_DST_ADDR1 =>
 					dst_addr(23 downto 16) <= encoded_data;
@@ -195,7 +200,7 @@ begin
 				
 				when S_DATA_LEN1 =>
 					data_len(7 downto 0) <= encoded_data;
-					rd <= '1';
+					rd <= '0';
 					pop_state <= S_DATA_LEN2;
 				
 				when S_DATA_LEN2 =>

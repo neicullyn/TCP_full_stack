@@ -117,7 +117,7 @@ begin
 			wr <= '0'; -- wr is a strobe signal
 			case push_state is
 				when S_IDLE =>
-					if (start <= '1') then
+					if (start = '1') then
 						encoded_data <= dst_addr(31 downto 24);
 						wr <= '1';
 						push_state <= S_DST_ADDR1;

@@ -180,10 +180,10 @@ architecture Behavioral of tcp_trs_task_scheduler is
 	signal FIFO_empty : std_logic;
 	signal FIFO_full : std_logic;
 	
-	type push_state_type is (S_IDLE, S_WAIT);
+	type push_state_type is (S_IDLE, S_WAIT1, S_WAIT2);
 	signal push_state : push_state_type;
 	
-	type pop_state_type is (S_IDLE, S_WAIT);
+	type pop_state_type is (S_IDLE, S_WAIT1, S_WAIT2);
 	signal pop_state : pop_state_type;
 	
 begin
@@ -244,6 +244,10 @@ begin
 			valid <= '0';
 			core_pushing <= '0';
 			app_pushing <= '0';
+			
+			e_start <= '0';
+			d_start <= '0';
+			
 			count <= to_unsigned(0, count'length);
 		elsif (rising_edge(CLK)) then
 			-- The length of e_start and d_start is 1 cycle
@@ -268,7 +272,7 @@ begin
 						e_start <= '1';
 						
 						core_pushing <= '1';
-						push_state <= S_WAIT;
+						push_state <= S_WAIT1;
 						
 					elsif (app_push = '1') then
 					-- Handle push request from app
@@ -285,10 +289,15 @@ begin
 						e_start <= '1';
 						
 						app_pushing <= '1';
-						push_state <= S_WAIT;						
+						push_state <= S_WAIT1;						
 					end if;
 					
-				when S_WAIT =>
+				when S_WAIT1 =>
+					if (e_busy = '1') then
+						push_state <= S_WAIT2;
+					end if;
+					
+				when S_WAIT2 =>
 					if (e_busy = '0') then
 						core_pushing <= '0';
 						app_pushing <= '0';
@@ -304,12 +313,18 @@ begin
 						valid <= '0';
 						d_start <= '1';
 						
-						pop_state <= S_WAIT;
+						pop_state <= S_WAIT1;
 					end if;
-				when S_WAIT =>
+					
+				when S_WAIT1 =>
+					if (d_busy = '1') then
+						pop_state <= S_WAIT2;
+					end if;
+					
+				when S_WAIT2=>
 					if (d_busy = '0') then
 						valid <= '1';
-						if (push_state = S_WAIT and e_busy = '0') then
+						if (push_state = S_WAIT2 and e_busy = '0') then
 						-- Push and Pop are completed simultaneously
 							count <= count;
 						else
