@@ -54,7 +54,7 @@ architecture Behavioral of MDIO_interface is
 	
 	signal WrA: array_conf;
 	signal WrD: array_data;
-    signal RdA: array_conf;
+   signal RdA: array_conf;
 	signal RdD: array_data;		
 	signal count: integer := 0;
 	signal count_Regi: integer := 0; 
@@ -97,7 +97,7 @@ begin
 	CLK_MDC <= clock_25;
 	busy <= '1' when MDIO_state = Device_busy else '0';
 	
-	FSM: process(nWR, nRD, nRST, clock_25)
+	FSM: process(nWR, nRD, nRST, clock_25,CLK)
 	begin
 		if (nRST = '0') then
 			MDIO_state <= Idle;
@@ -107,9 +107,13 @@ begin
 			count <= 0;
 			is_tran_finished <= '0';
 		else
-			if (falling_edge(clock_25)) then
+-- change		
+		
+		
+		--	if (falling_edge(clock_25)) then
 				case MDIO_state is
 					when Idle =>		
+					if rising_edge(CLK) then
 						if (nWR = '0' or nRD = '0') then
 							MDIO_state <= Device_busy;
 							is_tran_finished <= '0';
@@ -123,9 +127,11 @@ begin
 						else
 							data_MDIO <= '0';
 						end if;
+					end if;
 				
-				
+           
 					when Device_busy =>
+					if (falling_edge(clock_25)) then
 						case frame_state is
 							when Preamble =>
 								data_MDIO <= '1';
@@ -183,12 +189,12 @@ begin
 								end if;								
 						end case;
 						
+					end if;
 					if (is_tran_finished = '1') then
 						MDIO_state <= Idle;
 					end if;
 				end case;
 			end if;
-		end if;
 	end process;
 	
 	
