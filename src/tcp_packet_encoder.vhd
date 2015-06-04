@@ -111,7 +111,8 @@ begin
 	push_proc: process (nRST, CLK)
 	begin
 		if (nRST = '0') then
-			push_state <= S_IDLE;			
+			push_state <= S_IDLE;
+			wr <= '0';	
 		elsif (rising_edge(CLK)) then
 			wr <= '0'; -- wr is a strobe signal
 			case push_state is

@@ -54,7 +54,7 @@ architecture Behavioral of MDIO_interface is
 	
 	signal WrA: array_conf;
 	signal WrD: array_data;
-   signal RdA: array_conf;
+    signal RdA: array_conf;
 	signal RdD: array_data;		
 	signal count: integer := 0;
 	signal count_Regi: integer := 0; 

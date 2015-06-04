@@ -52,7 +52,7 @@ entity tcp_packet_decoder is
 		data_offset : out std_logic_vector(3 downto 0);		
 		
 		-- flags are controlled by separate signals
-		flags : out std_logic_vector(9 downto 0);
+		flags : out std_logic_vector(8 downto 0);
 		-- some of the features are not implemented
 		
 		-- Window size is a constant
@@ -79,6 +79,7 @@ entity tcp_packet_decoder is
 		-- control signals
 		start : in std_logic; -- To start to pop data from FIFO
 		valid : out std_logic;
+		busy : out std_logic;
 		
 		-- Interface to FIFO
 		encoded_data : in std_logic_vector(7 downto 0);
@@ -96,6 +97,9 @@ architecture Behavioral of tcp_packet_decoder is
 	signal pop_state : pop_state_type;
 begin
 	flags(8) <= '0';
+	
+	busy <= '1' when pop_state /= S_IDLE else '0';
+	
 	data_offset <= std_logic_vector(to_unsigned(5, data_offset'length));
 	window_size <= std_logic_vector(to_unsigned(2, window_size'length));
 	urgent_pointer <= std_logic_vector(to_unsigned(0, window_size'length));
@@ -163,6 +167,7 @@ begin
 					
 				when S_ACK_NUM4 =>
 					-- The flags
+					flags(8) <= '0';
 					flags(7 downto 0) <= encoded_data;
 					rd <= '1';
 					pop_state <= S_FLAGS;
