@@ -45,6 +45,12 @@ entity IP is
            RXDC : out  STD_LOGIC_VECTOR (7 downto 0); -- receive data bus to client layer via dispatcher
            RXDU : in  STD_LOGIC_VECTOR (7 downto 0); -- receive data bus from the underlying layer
 			  RXER : out STD_LOGIC; -- receive data error
+			 
+  			  TXIP : in STD_LOGIC_VECTOR (31 downto 0); -- transmission dst address
+			  TXIPEN: in STD_LOGIC; -- transmission IP ready
+			  RXIP : out STD_LOGIC_VECTOR (31 downto 0); -- receiving src address
+			  RXIPV : out STD_LOGIC; -- receiving src addres valid
+			  
            RdC: out STD_LOGIC; -- Read pulse for client layer
 			  WrC: out STD_LOGIC; -- Write pulse for client layer
 			  RdU: in STD_LOGIC; -- Read pulse from MAC
@@ -68,6 +74,8 @@ architecture Behavioral of IP is
 	
 	signal IP_src_addr: IP_addr;
 	signal IP_dst_addr: IP_addr;
+	signal IP_RX_src_addr: IP_addr;
+	
 	
 	-- IP states and counters
 	type TX_states is (Idle, Checksum_cal, Header, Payload);
@@ -153,10 +161,16 @@ begin
            CHKSUM => RX_CHKSUM
 	);
 		
-	IP_src_addr <= (X"80",X"10",X"10",X"00");   -- Modify appropriately
-	IP_dst_addr <= (X"80",X"10",X"10",X"01");
+	IP_src_addr <= (X"80",X"10",X"10",X"00"); -- for transmission, src address, fixed
+   -- Modify appropriately
+
 	
-	SELR <= '0' when RX_client = TCP else '1';
+	RXIP(31 downto 24) <= IP_RX_src_addr(0);  -- MSB
+	RXIP(23 downto 16) <= IP_RX_src_addr(1);
+	RXIP(15 downto 8) <= IP_RX_src_addr(2);
+	RXIP(7 downto 0) <= IP_RX_src_addr(3);
+	
+	SELR <= '0' when RX_client = TCP else '1'; -- receiving direction, TCP for 0
 		
 	TXDU <= TX_register;
 	RXDC <= RX_register;	
@@ -164,8 +178,17 @@ begin
 	
 	TX_total_length <= std_logic_vector(to_unsigned(TX_LENGTH + 20, 16));
 	
+	-- hdata: data in header
 	hdata(0 to 8) <= (X"45", X"00", TX_total_length(15 downto 8), TX_total_length(7 downto 0), X"00", X"00", X"00", X"00", X"FF");
 	hdata(12 to 19) <= (IP_src_addr(0), IP_src_addr(1), IP_src_addr(2), IP_src_addr(3), IP_dst_addr(0), IP_dst_addr(1), IP_dst_addr(2), IP_dst_addr(3));
+	
+	process(TXIPEN)
+	begin
+		if (TXIPEN = '1') then
+			IP_dst_addr <= (TXIP(31 downto 24), TXIP(23 downto 16), TXIP(15 downto 8), TXIP(7 downto 0));
+		end if;			
+	end process;
+	
 	
 	-- Main process
 	process(nRST, CLK, TXDV, RdU, WrU)
@@ -186,6 +209,7 @@ begin
 			TX_REQ <= '0';
 			RX_REQ <= '0';
 			ER_register <= '0';
+			RXIPV <= '0';
 			
 		elsif (rising_edge(CLK)) then  -- system triggered by rising edge, modify when necessary
 				-- TX direction
@@ -194,6 +218,7 @@ begin
 						if (TXDV = '1') then 
 							TX_state <= Checksum_cal;
 							RdC <= '0';
+							RXIPV <= '0';
 							TXEN <= '0';
 							TX_counter <= 0;
 							TX_INIT <= '1';
@@ -363,6 +388,19 @@ begin
 								else
 									RX_client <= UDP;
 								end if;
+							elsif (RX_counter = 12) then
+								RX_counter <= RX_counter + 1;
+								IP_RX_src_addr(0) <= RXDU;
+							elsif (RX_counter = 13) then
+								RX_counter <= RX_counter + 1;
+								IP_RX_src_addr(1) <= RXDU;
+							elsif (RX_counter = 14) then
+								RX_counter <= RX_counter + 1;
+								IP_RX_src_addr(2) <= RXDU;
+							elsif (RX_counter = 15) then
+								RX_counter <= RX_counter + 1;
+								IP_RX_src_addr(3) <= RXDU;
+								RXIPV <= '1';
 							else
 								RX_counter <= RX_counter + 1;
 							end if;
