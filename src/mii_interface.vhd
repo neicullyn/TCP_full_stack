@@ -112,7 +112,7 @@ begin
 					when Idle =>
 						RD <= '0';
 						if (TXDV = '1') then
-							TXD <= TX_register(3 downto 0);
+							TXD <= TX_register(7 downto 4);
 							TX_state <= First;
 							TXEN <= '1';
 						else
@@ -123,7 +123,7 @@ begin
 						RD <= '0';
 						TXEN <= '1';
 						if (fall_TXCLK = '1') then
-							TXD <= TX_register(7 downto 4);
+							TXD <= TX_register(3 downto 0);
 							TX_state <= Second;
 						end if;
 						
@@ -131,7 +131,7 @@ begin
 						if (fall_TXCLK = '1') then											
 							RD <= '1';
 							if (TXDV = '1') then
-								TXD <= TX_register(3 downto 0);
+								TXD <= TX_register(7 downto 4);
 								TX_state <= First;
 								TXEN <= '1';
 							else
@@ -149,7 +149,7 @@ begin
 						WR <= '0';
 						if (fall_RXCLK = '1') then
 							if (RXDV = '1') then
-								RX_register(3 downto 0) <= RXD;
+								RX_register(7 downto 4) <= RXD;
 								RX_state <= First;
 							end if;
 						end if;
@@ -157,7 +157,7 @@ begin
 					when First =>
 						if (fall_RXCLK = '1') then
 							if (RXDV = '1') then
-								RX_register(7 downto 4) <= RXD;
+								RX_register(3 downto 0) <= RXD;
 								RX_state <= Second;
 								WR <= '1';
 							end if;
@@ -169,7 +169,7 @@ begin
 						WR <= '0';
 						if (fall_RXCLK = '1') then
 							if (RXDV = '1') then
-								RX_register(3 downto 0) <= RXD;
+								RX_register(7 downto 4) <= RXD;
 								RX_state <= First;
 							else
 								RX_state <= Idle;
