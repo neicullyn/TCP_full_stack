@@ -157,7 +157,7 @@ begin
 						WR <= '0';
 						if (fall_RXCLK = '1') then
 							if (RXDV = '1') then
-								RX_register(7 downto 4) <= RXD;
+								RX_register(3 downto 0) <= RXD;
 								RX_state <= First;
 							end if;
 						end if;
@@ -165,7 +165,7 @@ begin
 					when First =>
 						if (fall_RXCLK = '1') then
 							if (RXDV = '1') then
-								RX_register(3 downto 0) <= RXD;
+								RX_register(7 downto 4) <= RXD;
 								RX_state <= Second;
 								WR <= '1';
 							end if;
@@ -177,7 +177,7 @@ begin
 						WR <= '0';
 						if (fall_RXCLK = '1') then
 							if (RXDV = '1') then
-								RX_register(7 downto 4) <= RXD;
+								RX_register(3 downto 0) <= RXD;
 								RX_state <= First;
 							else
 								RX_state <= Idle;
