@@ -367,8 +367,11 @@ begin
 	MAC_TXDC <= UART_DOUT;
 	UART_RD <= MAC_RdC;
 	
-	UART_DIN <= MAC_TXDU;
-	UART_WR <= MAC_RdU;
+-- DEBUG: forward data to PHY to UART
+--	UART_DIN <= MAC_TXDU;
+--	UART_WR <= MAC_RdU;
+	UART_DIN <= MAC_RXDC;
+	UART_WR <= MAC_WrC;
 	
 	
 	edge_detect_inst : edge_detect
