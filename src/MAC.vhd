@@ -162,7 +162,7 @@ begin
 				CRC_VALID => RX_CRC_VALID
 	);
 		
-	MAC_src_addr <= (X"48",X"48",X"48",X"48",X"48",X"48");   -- Modify appropriately
+	MAC_src_addr <= (X"54",X"42",X"49",X"62",X"6c",X"62");   -- Modify appropriately
 	MAC_dst_addr <= (X"FF",X"FF",X"FF",X"FF",X"FF",X"FF");
 	
 	SELR <= '0' when RX_client = IP else '1';
@@ -251,9 +251,9 @@ begin
 					when SFD =>
 						if (RdU = '1') then
 							TX_counter <= 0;
-							TX_register <= MAC_dst_addr(TX_counter);
+							TX_register <= MAC_dst_addr(0);
 							
-							TXC_DATA <= MAC_dst_addr(TX_counter);
+							TXC_DATA <= MAC_dst_addr(0);
 							TX_LOAD_INIT <= '0';
 							TX_D_VALID <= '1';
 							TX_CALC <= '1';
@@ -269,15 +269,15 @@ begin
 						if (RdU = '1') then
 							if (TX_counter = 5) then
 								TX_counter <= 0;
-								TX_register <= MAC_src_addr(TX_counter);
-								TXC_DATA <= MAC_src_addr(TX_counter);
+								TX_register <= MAC_src_addr(0);
+								TXC_DATA <= MAC_src_addr(0);
 								TX_D_VALID <= '1';
 								TX_CALC <= '1';
 								TX_state <= MAC_src;
 							else
 								TX_counter <= TX_counter + 1;
-								TX_register <= MAC_dst_addr(TX_counter);
-								TXC_DATA <= MAC_dst_addr(TX_counter);
+								TX_register <= MAC_dst_addr(TX_counter + 1);
+								TXC_DATA <= MAC_dst_addr(TX_counter + 1);
 								TX_D_VALID <= '1';
 								TX_CALC <= '1';								
 							end if;
@@ -297,8 +297,8 @@ begin
 								TX_state <= EtherType;
 							else
 								TX_counter <= TX_counter + 1;
-								TX_register <= MAC_src_addr(TX_counter);
-								TXC_DATA <= MAC_src_addr(TX_counter);
+								TX_register <= MAC_src_addr(TX_counter + 1);
+								TXC_DATA <= MAC_src_addr(TX_counter + 1);
 								TX_D_VALID <= '1';
 								TX_CALC <= '1';								
 							end if;
@@ -317,6 +317,7 @@ begin
 								TX_CALC <= '1';
 								RdC <= '1';
 								TX_state <= Payload;
+								
 							else
 								TX_counter <= TX_counter + 1;
 								if (SELT = '0') then -- IP encapsulated
@@ -335,25 +336,38 @@ begin
 						end if;
 					
 					when Payload =>
-						if (TXDV = '1') then -- Frame not finished
+						
+						if (TXDV = '1' or TX_counter < 45) then -- Frame not finished
 							if (RdU = '1') then
-								TX_register <= TXDC;
-								TXC_DATA <= TXDC;
-								TX_D_VALID <= '1';
-								TX_CALC <= '1';
-								RdC <= '1';
+								TX_counter <= TX_counter + 1;
+								if(TXDV = '0') then
+									-- Add padding
+									TX_register <= x"00";
+									TXC_DATA <= x"00";
+									TX_D_VALID <= '1';
+									TX_CALC <= '1';
+
+								else
+									TX_register <= TXDC;
+									TXC_DATA <= TXDC;
+									TX_D_VALID <= '1';
+									TX_CALC <= '1';
+									RdC <= '1';
+								end if;
 							else
 								RdC <= '0';
 								TX_D_VALID <= '0';
 								TX_CALC <= '0';
 							end if;
+							
+							
 						else  -- Frame finished
 							if (RdU = '1') then 
 								TX_D_VALID <= '1';
 								TX_CALC <= '0';
 								
 								for i in 0 to 7 loop
-									TX_register(i) <= TX_CRC(7 - i);
+									TX_register(i) <= TX_CRC(i);
 								end loop;
 								TX_state <= FCS;
 								TX_counter <= 0;
@@ -379,7 +393,7 @@ begin
 								TX_CALC <= '0';
 																
 								for i in 0 to 7 loop
-									TX_register(i) <= TX_CRC(7 - i);
+									TX_register(i) <= TX_CRC(i);
 								end loop;
 							end if;
 						else
