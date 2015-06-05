@@ -2,7 +2,7 @@
 -- Company: 
 -- Engineer:
 --
--- Create Date:   22:12:39 06/04/2015
+-- Create Date:   04:42:22 06/05/2015
 -- Design Name:   
 -- Module Name:   C:/Users/Lydia/Desktop/Caltech Spring2015/EE119C/topics/TCP/SysTb/System_tb.vhd
 -- Project Name:  SysTb
@@ -44,25 +44,29 @@ ARCHITECTURE behavior OF System_tb IS
          CLK : IN  std_logic;
          nRST : IN  std_logic;
          TXDUDP : IN  std_logic_vector(7 downto 0);
+         TXDTCP : IN  std_logic_vector(7 downto 0);
          TXDVUDP : IN  std_logic;
-			TXDTCP : IN  std_logic_vector(7 downto 0);
          TXDVTCP : IN  std_logic;
+         RXDUDP : OUT  std_logic_vector(7 downto 0);
+         RXDTCP : OUT  std_logic_vector(7 downto 0);
          TXDPHY : OUT  std_logic_vector(3 downto 0);
          TXEN : OUT  std_logic;
          RXDPHY : IN  std_logic_vector(3 downto 0);
          RXDVPHY : IN  std_logic;
-			RXDTCP : OUT std_logic_vector(7 downto 0);
-			RXDUDP : OUT std_logic_vector(7 downto 0);
          RdUDP : OUT  std_logic;
          WrUDP : OUT  std_logic;
          RdTCP : OUT  std_logic;
          WrTCP : OUT  std_logic;
-			TXCLK : IN  std_logic;
+         TXCLK : IN  std_logic;
          RXCLK : IN  std_logic;
          CLK_MDC : OUT  std_logic;
          data_MDIO : INOUT  std_logic;
          TXIP : IN  std_logic_vector(31 downto 0);
-         TXIPEN : IN  std_logic
+         TXIPEN : IN  std_logic;
+         TXLENTCP : IN  std_logic_vector(15 downto 0);
+         TXLENVTCP : IN  std_logic;
+         TXLENUDP : IN  std_logic_vector(15 downto 0);
+         TXLENVUDP : IN  std_logic
         );
     END COMPONENT;
     
@@ -71,29 +75,33 @@ ARCHITECTURE behavior OF System_tb IS
    signal CLK : std_logic := '0';
    signal nRST : std_logic := '0';
    signal TXDUDP : std_logic_vector(7 downto 0) := (others => '0');
-   signal TXDVUDP : std_logic := '0';
    signal TXDTCP : std_logic_vector(7 downto 0) := (others => '0');
+   signal TXDVUDP : std_logic := '0';
    signal TXDVTCP : std_logic := '0';
-	signal RXDPHY : std_logic_vector(3 downto 0) := (others => '0');
+   signal RXDPHY : std_logic_vector(3 downto 0) := (others => '0');
    signal RXDVPHY : std_logic := '0';
    signal TXCLK : std_logic := '0';
    signal RXCLK : std_logic := '0';
    signal TXIP : std_logic_vector(31 downto 0) := (others => '0');
    signal TXIPEN : std_logic := '0';
+   signal TXLENTCP : std_logic_vector(15 downto 0) := (others => '0');
+   signal TXLENVTCP : std_logic := '0';
+   signal TXLENUDP : std_logic_vector(15 downto 0) := X"002C";
+   signal TXLENVUDP : std_logic := '1';
 
 	--BiDirs
    signal data_MDIO : std_logic;
 
  	--Outputs
+   signal RXDUDP : std_logic_vector(7 downto 0);
+   signal RXDTCP : std_logic_vector(7 downto 0);
    signal TXDPHY : std_logic_vector(3 downto 0);
    signal TXEN : std_logic;
    signal RdUDP : std_logic;
    signal WrUDP : std_logic;
    signal RdTCP : std_logic;
    signal WrTCP : std_logic;
-	signal CLK_MDC : std_logic;
-	signal RXDTCP : std_logic_vector(7 downto 0);
-	signal RXDUDP : std_logic_vector(7 downto 0);
+   signal CLK_MDC : std_logic;
 
    -- Clock period definitions
    constant CLK_period : time := 10 ns;
@@ -107,25 +115,29 @@ BEGIN
           CLK => CLK,
           nRST => nRST,
           TXDUDP => TXDUDP,
-          TXDVUDP => TXDVUDP,
           TXDTCP => TXDTCP,
+          TXDVUDP => TXDVUDP,
           TXDVTCP => TXDVTCP,
-			 TXDPHY => TXDPHY,
+          RXDUDP => RXDUDP,
+          RXDTCP => RXDTCP,
+          TXDPHY => TXDPHY,
           TXEN => TXEN,
           RXDPHY => RXDPHY,
           RXDVPHY => RXDVPHY,
-			 RXDTCP => RXDTCP,
-			 RXDUDP => RXDUDP,
           RdUDP => RdUDP,
           WrUDP => WrUDP,
           RdTCP => RdTCP,
           WrTCP => WrTCP,
-			 TXCLK => TXCLK,
+          TXCLK => TXCLK,
           RXCLK => RXCLK,
           CLK_MDC => CLK_MDC,
           data_MDIO => data_MDIO,
           TXIP => TXIP,
-          TXIPEN => TXIPEN
+          TXIPEN => TXIPEN,
+          TXLENTCP => TXLENTCP,
+          TXLENVTCP => TXLENVTCP,
+          TXLENUDP => TXLENUDP,
+          TXLENVUDP => TXLENVUDP
         );
 
    -- Clock process definitions
@@ -196,5 +208,6 @@ BEGIN
 		
       wait;
    end process;
+
 
 END;

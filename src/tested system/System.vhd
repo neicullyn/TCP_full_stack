@@ -51,7 +51,11 @@ entity System is
 			  CLK_MDC : out STD_LOGIC;
 			  data_MDIO : inout STD_LOGIC;
 			  TXIP : in STD_LOGIC_VECTOR (31 downto 0);
-			  TXIPEN : in STD_LOGIC
+			  TXIPEN : in STD_LOGIC;
+			  TXLENTCP : in STD_LOGIC_VECTOR (15 downto 0);
+           TXLENVTCP : in STD_LOGIC;
+			  TXLENUDP : in STD_LOGIC_VECTOR (15 downto 0);
+			  TXLENVUDP : in STD_LOGIC
 			  );
 end System;
 
@@ -73,13 +77,36 @@ component IP is
 			  RXIP : out STD_LOGIC_VECTOR (31 downto 0); -- receiving src address
 			  RXIPV : out STD_LOGIC; -- receiving src addres valid
 			  
-           RdC: out STD_LOGIC; -- Read pulse for client layer
+			  TXLEN : in STD_LOGIC_VECTOR (15 downto 0); -- length of transmission data (not including header)
+           TXLENV : in STD_LOGIC; -- TX_length valid
+			  RdC: out STD_LOGIC; -- Read pulse for client layer
 			  WrC: out STD_LOGIC; -- Write pulse for client layer
 			  RdU: in STD_LOGIC; -- Read pulse from MAC
 			  WrU: in STD_LOGIC; -- Write pulse from MAC
            SELT : in  STD_LOGIC; -- Protocol selection via collector during transmission, 0 for TCP, 1 for UDP
 	        SELR : out  STD_LOGIC -- Protocol selection via dispatcher during receiving, 0 for TCP, 1 for UDP
            );
+end component;
+
+component collector_IP is
+    Port ( CLK : in  STD_LOGIC;
+           nRST : in  STD_LOGIC;
+           TXDU : out  STD_LOGIC_VECTOR (7 downto 0);
+           TXEN : out  STD_LOGIC;
+           TXDC1 : in  STD_LOGIC_VECTOR (7 downto 0);
+           TXDC2 : in  STD_LOGIC_VECTOR (7 downto 0);
+           TXDV1 : in  STD_LOGIC;
+           TXDV2 : in  STD_LOGIC;
+			  TXLEN1 : in STD_LOGIC_VECTOR (15 downto 0);
+			  TXLEN2 : in STD_LOGIC_VECTOR (15 downto 0);
+			  TXLENV1 : in STD_LOGIC;
+			  TXLENV2 : in STD_LOGIC;
+			  TXLEN : out STD_LOGIC_VECTOR (15 downto 0);
+			  TXLENV : out STD_LOGIC;
+           SEL : out  STD_LOGIC;
+			  RdU : in STD_LOGIC;
+           RdC1 : out  STD_LOGIC;
+           RdC2 : out  STD_LOGIC);
 end component;
 
 component ARP is
@@ -150,6 +177,10 @@ component UDP is
            TXDU : out  STD_LOGIC_VECTOR (7 downto 0); -- transmission data bus to underlying layer
            RXDC : out  STD_LOGIC_VECTOR (7 downto 0); -- receive data bus to client layer via dispatcher
            RXDU : in  STD_LOGIC_VECTOR (7 downto 0); -- receive data bus from the underlying layer
+			  TXLENC : in STD_LOGIC_VECTOR (15 downto 0);
+			  TXLENCV : in STD_LOGIC;			  
+			  TXLENU : out STD_LOGIC_VECTOR (15 downto 0);
+			  TXLENUV : out STD_LOGIC;
 			  RdC: out STD_LOGIC; -- Read pulse for client layer
 			  WrC: out STD_LOGIC; -- Write pulse for client layer
 			  RdU: in STD_LOGIC; -- Read pulse from IP
@@ -166,6 +197,10 @@ component TCP is
            TXDU : out  STD_LOGIC_VECTOR (7 downto 0); -- transmission data bus to underlying layer
            RXDC : out  STD_LOGIC_VECTOR (7 downto 0); -- receive data bus to client layer via dispatcher
            RXDU : in  STD_LOGIC_VECTOR (7 downto 0); -- receive data bus from the underlying layer
+			  TXLENC : in STD_LOGIC_VECTOR (15 downto 0);
+			  TXLENCV : in STD_LOGIC;			  
+			  TXLENU : out STD_LOGIC_VECTOR (15 downto 0);
+			  TXLENUV : out STD_LOGIC;
 			  RdC: out STD_LOGIC; -- Read pulse for client layer
 			  WrC: out STD_LOGIC; -- Write pulse for client layer
 			  RdU: in STD_LOGIC; -- Read pulse from IP
@@ -304,6 +339,17 @@ signal RXTAD: std_logic_vector (7 downto 0);
 signal TXATDEN: std_logic;
 signal RdTA: std_logic;
 signal WrTA: std_logic;
+signal TXTCLEN: std_logic_vector (15 downto 0);
+signal TXUCLEN: std_logic_vector (15 downto 0);
+signal TXUCLENV: std_logic;
+signal TXTCLENV: std_logic;
+signal TXCILEN: std_logic_vector (15 downto 0);
+signal TXCILENV: std_logic;
+signal TXATLEN: std_logic_vector (15 downto 0);
+signal TXATLENV: std_logic;
+signal TXAULEN: std_logic_vector (15 downto 0);
+signal TXAULENV: std_logic;
+
 
 begin
 
@@ -317,6 +363,10 @@ port map(
 				TXDU => TXTCD,
 				RXDC => RXTAD,
 				RXDU => RXDTD,
+				TXLENC => TXATLEN,
+				TXLENCV => TXATLENV,
+				TXLENU => TXTCLEN,
+				TXLENUV => TXTCLENV,
 				RdC => RdTA,
 				WrC => WrTA,
 				RdU => RdCT,
@@ -334,13 +384,17 @@ port map(
 				TXDU => TXUCD,
 				RXDC => RXUAD,
 				RXDU => RXDUD,
+				TXLENC => TXAULEN,
+				TXLENCV => TXAULENV,
+				TXLENU => TXUCLEN,
+				TXLENUV => TXUCLENV,
 				RdC => RdUA,
 				WrC => WrUA,
 				RdU => RdCU,
 				WrU => WrDU
 );
 
-IP_collector: collector
+IP_collector: collector_IP
 port map(
 			  CLK => Inter_CLK,
            nRST => Inter_nRST,
@@ -350,11 +404,18 @@ port map(
            TXDC2 => TXUCD,
            TXDV1 => TXTCDEN,
            TXDV2 => TXUCDEN,
+			  TXLEN1 => TXTCLEN,
+			  TXLEN2 => TXUCLEN,
+			  TXLENV1 => TXTCLENV,
+			  TXLENV2 => TXUCLENV,
+			  TXLEN => TXCILEN,
+			  TXLENV => TXCILENV,
            SEL => TXCISEL,
 			  RdU => RdIC,
            RdC1 => RdCT,
            RdC2 => RdCU
 );
+
 
 IP_dispatcher: dispatcher
 port map(
@@ -383,6 +444,8 @@ port map(
 			  RXDU => RXDID,
 			  TXIP => Inter_TXIP,
 			  TXIPEN => Inter_TXIPEN,
+			  TXLEN => TXCILEN,
+			  TXLENV => TXCILENV,
 			  RdC => RdIC,
 			  WrC => WrID,
 			  RdU => RdCI,
@@ -509,6 +572,11 @@ Inter_TXIP <= TXIP;
 Inter_TXIPEN <= TXIPEN;
 RXDTCP <= RXTAD;
 RXDUDP <= RXUAD;
+TXATLEN <= TXLENTCP;
+TXATLENV <= TXLENVTCP;
+TXAULEN <= TXLENUDP;
+TXAULENV <= TXLENVUDP;
+
 
 -- testing only, remove after proper connection
 TXAAD <= X"00";

@@ -51,7 +51,9 @@ entity IP is
 			  RXIP : out STD_LOGIC_VECTOR (31 downto 0); -- receiving src address
 			  RXIPV : out STD_LOGIC; -- receiving src addres valid
 			  
-           RdC: out STD_LOGIC; -- Read pulse for client layer
+			  TXLEN : in STD_LOGIC_VECTOR (15 downto 0); -- length of transmission data (not including header)
+           TXLENV : in STD_LOGIC; -- TX_length valid
+			  RdC: out STD_LOGIC; -- Read pulse for client layer
 			  WrC: out STD_LOGIC; -- Write pulse for client layer
 			  RdU: in STD_LOGIC; -- Read pulse from MAC
 			  WrU: in STD_LOGIC; -- Write pulse from MAC
@@ -63,7 +65,7 @@ end IP;
 architecture Behavioral of IP is
 	
 	-- data length (excluding the header part)
-	constant TX_LENGTH : integer := 100;
+	signal TX_LENGTH : STD_LOGIC_VECTOR(15 downto 0);
 	signal TX_total_length: STD_LOGIC_VECTOR(15 downto 0);
 	signal RX_LENGTH : integer;
 	signal RX_total_length: STD_LOGIC_VECTOR(15 downto 0);
@@ -176,7 +178,7 @@ begin
 	RXDC <= RX_register;	
 	RXER <= ER_register;
 	
-	TX_total_length <= std_logic_vector(to_unsigned(TX_LENGTH + 20, 16));
+	TX_total_length <= std_logic_vector(unsigned(TX_LENGTH) + 20);
 	
 	-- hdata: data in header
 	hdata(0 to 8) <= (X"45", X"00", TX_total_length(15 downto 8), TX_total_length(7 downto 0), X"00", X"00", X"00", X"00", X"FF");
@@ -189,6 +191,12 @@ begin
 		end if;			
 	end process;
 	
+	process(TXLENV, TXLEN)
+	begin
+		if (TXLENV = '1') then
+			TX_LENGTH <= TXLEN;
+		end if;
+	end process;
 	
 	-- Main process
 	process(nRST, CLK, TXDV, RdU, WrU)
