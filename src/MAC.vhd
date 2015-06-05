@@ -160,7 +160,7 @@ begin
 	);
 		
 	MAC_src_addr <= (X"48",X"48",X"48",X"48",X"48",X"48");   -- Modify appropriately
-	MAC_dst_addr <= (X"54",X"42",X"49",X"62",X"6C",X"62");
+	MAC_dst_addr <= (X"FF",X"FF",X"FF",X"FF",X"FF",X"FF");
 	
 	SELR <= '0' when RX_client = IP else '1';
 		
@@ -223,7 +223,7 @@ begin
 				case TX_state is
 					when Idle =>
 						if (TXDV = '1') then 
-							TX_register <= X"AA"; -- 10101010, TX_register(7) corresponds MSB
+							TX_register <= X"55"; -- 10101010, TX_register(7) corresponds MSB
 							TX_state <= Preamble;
 							RdC <= '0';
 							TXEN <= '1';
@@ -233,7 +233,7 @@ begin
 					when Preamble =>
 						if (RdU = '1') then  -- current data in the register has been handled
 							if (TX_counter = 6) then
-								TX_register <= X"AB"; -- 10101011
+								TX_register <= X"D5"; -- 10101011
 								TX_state <= SFD;
 								TX_counter <= 0;
 								TX_LOAD_INIT <= '1';
