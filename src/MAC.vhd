@@ -360,6 +360,8 @@ begin
 								TX_register <= X"00";
 								TX_state <= Interpacket;
 								TX_counter <= 0;
+								
+								TXEN <= '0'; -- Added by lyn 
 							else
 								TX_counter <= TX_counter + 1;
 								TX_D_VALID <= '1';

@@ -120,25 +120,65 @@ BEGIN
 		
 		wait for CLOCK_period;
 		
-		DATA <= X"11";
+		DATA <= X"FF";
 		
 		D_VALID <= '1';
 		CALC <= '1';
 		
 		wait for CLOCK_period;
 		
-		DATA <= X"7F";
+		DATA <= X"FF";
 		wait for CLOCK_period;
 		
-		DATA <= X"CF";
-		
-		wait for CLOCK_period;
-		
-		DATA <= X"B2";
+		DATA <= X"FF";
 		
 		wait for CLOCK_period;
 		
-		DATA <= X"B8";
+		DATA <= X"FF";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"FF";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"FF";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"48";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"48";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"48";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"48";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"48";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"48";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"08";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"00";
+		
+		wait for CLOCK_period;
+		
+		DATA <= X"0b";
 		
 		wait for CLOCK_period;
 		
@@ -147,21 +187,20 @@ BEGIN
 		wait for CLOCK_period * 4;
 		
 		
-		
-		
-		DATA <= CRC_REG(31 downto 24);
-		
-		wait for CLOCK_period;
-		
-		DATA <= CRC_REG(23 downto 16);
-		
-		wait for CLOCK_period;
-		
-		DATA <= CRC_REG(15 downto 8);
-		
-		wait for CLOCK_period;
-		
-		DATA <= CRC_REG(7 downto 0);
+--		
+--		DATA <= CRC_REG(31 downto 24);
+--		
+--		wait for CLOCK_period;
+--		
+--		DATA <= CRC_REG(23 downto 16);
+--		
+--		wait for CLOCK_period;
+--		
+--		DATA <= CRC_REG(15 downto 8);
+--		
+--		wait for CLOCK_period;
+--		
+--		DATA <= CRC_REG(7 downto 0);
 		
 		wait for CLOCK_period;
       -- insert stimulus here 
