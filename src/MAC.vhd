@@ -43,7 +43,7 @@ entity MAC is
     Port ( CLK : in  STD_LOGIC;  -- global clock
            nRST : in  STD_LOGIC;  -- global reset, active low
            TXDV : in  STD_LOGIC; -- transmiision data ready from client layer
-			  TXEN : out STD_LOGIC; -- transmission data ready for underlying layer (MII)
+			TXEN : out STD_LOGIC; -- transmission data ready for underlying layer (MII)
            TXDC : in  STD_LOGIC_VECTOR (7 downto 0); -- transmission data bus from client layer via collector
            TXDU : out  STD_LOGIC_VECTOR (7 downto 0); -- transmission data bus to underlying layer
            RXDC : out  STD_LOGIC_VECTOR (7 downto 0); -- receive data bus to client layer via dispatcher
@@ -160,7 +160,7 @@ begin
 	);
 		
 	MAC_src_addr <= (X"48",X"48",X"48",X"48",X"48",X"48");   -- Modify appropriately
-	MAC_dst_addr <= (X"49",X"49",X"49",X"49",X"49",X"49");
+	MAC_dst_addr <= (X"54",X"42",X"49",X"62",X"6C",X"62");
 	
 	SELR <= '0' when RX_client = IP else '1';
 		
