@@ -123,10 +123,16 @@ begin
 					
 					when First =>
 						RD <= '0';
-						TXEN <= '1';
+						
 						if (fall_TXCLK = '1') then
-							TXD <= TX_register(3 downto 0);
-							TX_state <= Second;
+							if (TXDV = '1') then
+								TXD <= TX_register(3 downto 0);
+								TX_state <= Second;
+								TXEN <= '1';
+							else
+								TX_state <= Idle;
+								TXEN <= '0';
+							end if;
 						end if;
 						
 					when Second =>

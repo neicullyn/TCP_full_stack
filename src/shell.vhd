@@ -219,7 +219,10 @@ architecture Behavioral of shell is
 	signal MDIO_MDIO : std_logic;
 	
 	signal PHY_TXEN_dummy : std_logic;
+	signal MAC_TXEN_r : std_logic;
+	signal MAC_TXEN_f : std_logic;
 begin
+	
 	PHY_TXEN <= PHY_TXEN_dummy;
 	SSEG_CA <= (others => '0');
 	SSEG_AN <= (others => '1');
@@ -358,9 +361,24 @@ begin
 		RD => MAC_RdU,
 		TXCLK_f => MAC_TXCLK_f
 	);
+	MAC_SELT <= '0';
 	
-	MAC_TXDV <= UART_DOUTV;
+	MAC_TXDV <= UART_DOUTV;	
+	MAC_TXDC <= UART_DOUT;
 	UART_RD <= MAC_RdC;
+	
+	UART_DIN <= MAC_TXDU;
+	UART_WR <= MAC_RdU;
+	
+	
+	edge_detect_inst : edge_detect
+	port map(
+					CLK => CLK,
+					sin => MAC_TXEN,
+					srising => MAC_TXEN_r,
+					sfalling => MAC_TXEN_f
+				);
+														
 	
 
 end Behavioral;

@@ -219,6 +219,9 @@ begin
 			RX_D_VALID <= '0';
 			ER_register <= '0';
 			
+			TXEN <= '0';
+			WrC <= '0';
+			RdC <= '0';
 		elsif (Sys_status = Ready) then
 			if (rising_edge(CLK)) then  -- system triggered by rising edge, modify when necessary
 				-- TX direction
@@ -247,15 +250,17 @@ begin
 					
 					when SFD =>
 						if (RdU = '1') then
-							TX_LOAD_INIT <= '0';
 							TX_counter <= 0;
 							TX_register <= MAC_dst_addr(TX_counter);
+							
 							TXC_DATA <= MAC_dst_addr(TX_counter);
 							TX_LOAD_INIT <= '0';
 							TX_D_VALID <= '1';
 							TX_CALC <= '1';
+							
 							TX_state <= MAC_dst;
 						else
+							TX_LOAD_INIT <= '0';
 							TX_D_VALID <= '0';
 							TX_CALC <= '0';
 						end if;
@@ -272,7 +277,7 @@ begin
 							else
 								TX_counter <= TX_counter + 1;
 								TX_register <= MAC_dst_addr(TX_counter);
-								TXC_DATA <= MAC_src_addr(TX_counter);
+								TXC_DATA <= MAC_dst_addr(TX_counter);
 								TX_D_VALID <= '1';
 								TX_CALC <= '1';								
 							end if;
@@ -345,8 +350,11 @@ begin
 						else  -- Frame finished
 							if (RdU = '1') then 
 								TX_D_VALID <= '1';
-								TX_CALC <= '0';								
-								TX_register <= TX_CRC;
+								TX_CALC <= '0';
+								
+								for i in 0 to 7 loop
+									TX_register(i) <= TX_CRC(7 - i);
+								end loop;
 								TX_state <= FCS;
 								TX_counter <= 0;
 								RdC <= '0';
@@ -364,13 +372,18 @@ begin
 								TX_state <= Interpacket;
 								TX_counter <= 0;
 								
-								TXEN <= '0'; -- Added by lyn 
+								TXEN <= '0';	
 							else
 								TX_counter <= TX_counter + 1;
 								TX_D_VALID <= '1';
 								TX_CALC <= '0';
-								TX_register <= TX_CRC;
+																
+								for i in 0 to 7 loop
+									TX_register(i) <= TX_CRC(7 - i);
+								end loop;
 							end if;
+						else
+							TX_D_VALID <= '0';
 						end if;
 						
 					when Interpacket =>
