@@ -57,7 +57,9 @@ entity MAC is
 			  RdU: in STD_LOGIC; -- Read pulse from MII
 			  WrU: in STD_LOGIC; -- Write pulse from MII
            SELT : in  STD_LOGIC; -- Protocol selection via collector during transmission, 0 for IP, 1 for ARP
-           SELR : out  STD_LOGIC -- Protocol selection via dispatcher during receiving, 0 for IP, 1 for ARP
+           SELR : out  STD_LOGIC; -- Protocol selection via dispatcher during receiving, 0 for IP, 1 for ARP
+		   
+		   TXCLK_f : in std_logic -- falling edge of TXCLK
            );
 end MAC;
 
@@ -127,6 +129,7 @@ architecture Behavioral of MAC is
 	signal RX_CRC_REG: STD_LOGIC_VECTOR(31 downto 0);
 	signal TX_CRC_VALID: STD_LOGIC;
 	signal RX_CRC_VALID: STD_LOGIC;
+	
 	
 	
 begin
@@ -357,11 +360,11 @@ begin
 					when FCS =>
 						if (RdU = '1') then
 							if (TX_counter = 3) then
-								TX_register <= X"00";
+								TX_register <= TX_CRC;
 								TX_state <= Interpacket;
 								TX_counter <= 0;
 								
-								--TXEN <= '0'; -- Added by lyn 
+								TXEN <= '0'; -- Added by lyn 
 							else
 								TX_counter <= TX_counter + 1;
 								TX_D_VALID <= '1';
@@ -371,7 +374,7 @@ begin
 						end if;
 						
 					when Interpacket =>
-						if (RdU = '1') then
+						if (TXCLK_f = '1') then
 							if (TX_counter = 11) then
 								TX_state <= Idle;
 								TX_counter <= 0;

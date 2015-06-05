@@ -146,7 +146,8 @@ architecture Behavioral of shell is
 		MDIO_nRD : OUT std_logic;
 		RdC : OUT std_logic;
 		WrC : OUT std_logic;
-		SELR : OUT std_logic
+		SELR : OUT std_logic;
+		TXCLK_f : IN std_logic
 		);
 	END COMPONENT;
 	
@@ -164,7 +165,8 @@ architecture Behavioral of shell is
 		TXD : OUT std_logic_vector(3 downto 0);
 		RX_out : OUT std_logic_vector(7 downto 0);
 		WR : OUT std_logic;
-		RD : OUT std_logic
+		RD : OUT std_logic;
+		TXCLK_f : OUT std_logic
 		);
 	END COMPONENT;
 	
@@ -208,6 +210,7 @@ architecture Behavioral of shell is
 	signal MAC_WrU : std_logic;
 	signal MAC_SELT : std_logic;
 	signal MAC_SELR : std_logic;	
+	signal MAC_TXCLK_f : std_logic;
 	
 	
 	--- DEBUG
@@ -334,7 +337,8 @@ begin
 		RdU => MAC_RdU,
 		WrU => MAC_WrU,
 		SELT => MAC_SELT,
-		SELR => MAC_SELR
+		SELR => MAC_SELR,
+		TXCLK_f => MAC_TXCLK_f
 	);
 	
 	-- MII	
@@ -351,7 +355,8 @@ begin
 		RXD => PHY_RXD,
 		RX_out => MAC_RXDU,
 		WR => MAC_WrU,
-		RD => MAC_RdU
+		RD => MAC_RdU,
+		TXCLK_f => MAC_TXCLK_f
 	);
 	
 	MAC_TXDV <= UART_DOUTV;

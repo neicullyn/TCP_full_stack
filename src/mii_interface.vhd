@@ -44,7 +44,9 @@ port(
 			RX_out: out std_logic_vector(7 downto 0);-- receve mode: data output to MAC
 			
 			WR: out std_logic;-- receive mode: to push a 4-bit data into FIFO, active high
-			RD: out std_logic-- transmit mode: to pop a 4-bit data out of FIFO, active high
+			RD: out std_logic;-- transmit mode: to pop a 4-bit data out of FIFO, active high
+			
+			TXCLK_f : out std_logic -- falling edge of TXCLK
 	 );
 end mii_interface;
 
@@ -67,7 +69,7 @@ architecture Behavioral of mii_interface is
 
 	
 begin
-
+	TXCLK_f <= fall_TXCLK;
 	TX_register <= TX_in;
 	RX_out <= RX_register;
 	
