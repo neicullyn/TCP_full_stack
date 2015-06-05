@@ -105,6 +105,7 @@ begin
 		if (nRST = '0') then
 			TX_state <= Idle;
 			RX_state <= Idle;
+			TXEN <= '0';
 		else
 			if (rising_edge(CLK)) then
 				case TX_state is

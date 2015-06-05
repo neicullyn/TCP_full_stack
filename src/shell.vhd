@@ -156,13 +156,13 @@ architecture Behavioral of shell is
 		TXCLK : IN std_logic;
 		RXCLK : IN std_logic;
 		nRST : IN std_logic;
-		TX_DV : IN std_logic;
+		TXDV : IN std_logic;
 		RXDV : IN std_logic;
-		TX_in : IN std_logic_vector(3 downto 0);
+		TX_in : IN std_logic_vector(7 downto 0);
 		RXD : IN std_logic_vector(3 downto 0);          
 		TXEN : OUT std_logic;
 		TXD : OUT std_logic_vector(3 downto 0);
-		RX_out : OUT std_logic_vector(3 downto 0);
+		RX_out : OUT std_logic_vector(7 downto 0);
 		WR : OUT std_logic;
 		RD : OUT std_logic
 		);
@@ -214,12 +214,16 @@ architecture Behavioral of shell is
 	signal flip : std_logic;
 	signal busy_test : std_logic;
 	signal MDIO_MDIO : std_logic;
+	
+	signal PHY_TXEN_dummy : std_logic;
 begin
+	PHY_TXEN <= PHY_TXEN_dummy;
 	SSEG_CA <= (others => '0');
 	SSEG_AN <= (others => '1');
 	
 	PHY_MDIO <= MDIO_MDIO;
-	LED <= (0 => MDIO_busy, 1 => flip, 2 => BTN_db(0), 3 => busy_test, 4 => MDIO_MDIO, others => '0');
+	LED <= (0 => UART_DOUTV, 1 => MAC_TXEN, 2 => PHY_TXEN_dummy,
+			3 => MAC_RdU, 4 => MAC_RdC, others => '0');
 	
 	RAM_ADDR <= (others => '0');
 	RAM_CLK_out <= '0';
@@ -232,9 +236,8 @@ begin
 	RAM_nUB <= '1';
 	
 	PHY_nRESET <= nRST;
-	PHY_TXD <= (others => '0');
 	PHY_nINT <= '1';
-	PHY_TXEN <= '0';		
+
 	
 	Inst_UART_w_FIFO: UART_w_FIFO PORT MAP(
 		nRST => nRST,
@@ -301,9 +304,6 @@ begin
 		end loop;
 	end process;
 	
-	
-
-	
 	-- MDIO 
     mdio_interface_inst: MDIO_interface PORT MAP (
           CLK => CLK,
@@ -337,24 +337,25 @@ begin
 		SELR => MAC_SELR
 	);
 	
-	-- MII
+	-- MII	
 	Inst_mii_interface: mii_interface PORT MAP(
 		CLK => CLK,
 		TXCLK => PHY_TXCLK,
 		RXCLK => PHY_RXCLK,
 		nRST => nRST,
-		TX_DV => MAC_TXEN,
-		TXEN => PHY_TXEN,
+		TXDV => MAC_TXEN,
+		TXEN => PHY_TXEN_dummy,
 		RXDV => PHY_RXDV,
 		TX_in => MAC_TXDU,
 		TXD => PHY_TXD,
 		RXD => PHY_RXD,
-		RX_out => MAX_RXDU,
+		RX_out => MAC_RXDU,
 		WR => MAC_WrU,
 		RD => MAC_RdU
 	);
 	
-	MAC_TXDV <= DOUTV;
+	MAC_TXDV <= UART_DOUTV;
+	UART_RD <= MAC_RdC;
 	
 
 end Behavioral;
