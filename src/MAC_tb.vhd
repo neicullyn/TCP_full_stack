@@ -58,7 +58,8 @@ ARCHITECTURE behavior OF MAC_tb IS
          RdU : IN  std_logic;
          WrU : IN  std_logic;
          SELT : IN  std_logic;
-         SELR : OUT  std_logic
+         SELR : OUT  std_logic;
+			TXCLK_f : IN std_logic
         );
     END COMPONENT;
     
@@ -84,7 +85,7 @@ ARCHITECTURE behavior OF MAC_tb IS
    signal RdC : std_logic;
    signal WrC : std_logic;
    signal SELR : std_logic;
-
+	signal TXCLK_f : std_logic;
    -- Clock period definitions
    constant CLK_period : time := 10 ns;
  
@@ -109,7 +110,8 @@ BEGIN
           RdU => RdU,
           WrU => WrU,
           SELT => SELT,
-          SELR => SELR
+          SELR => SELR,
+			 TXCLK_f => TXCLK_f
         );
 
    -- Clock process definitions
@@ -136,21 +138,24 @@ BEGIN
 		
 		nRST <= '1';
 		
-		wait for CLK_period;
+		wait for 50 * CLK_period;
 		SELT <= '0';
 		TXDV <= '1';
-		TXDC <= X"AB";
+		TXDC <= X"0B";
 		
 		RXDU <= X"CD";
 		
 		wait for CLK_period;
 		
 		for i in 0 to 1000 loop	
+			TXCLK_f <= '1';
 			RdU <= '1';
 			WrU <= '1';		
 			wait for CLK_period;
+			TXCLK_f <= '0';
 			RdU <= '0';
 			WrU <= '0';
+			TXDV <= '0';
 			wait for CLK_period * 39;
 		end loop;
       wait;
